@@ -6,24 +6,31 @@ MediCare AI is a full-stack, voice-enabled, AI-powered medical reminder applicat
 
 ## 🌟 Key Features
 
-1. **Elderly-Friendly UI**: High-contrast contrast palettes, large touch buttons, legible typography (Google Fonts Outfit), and direct tab navigation.
-2. **Web Speech API integration**: 
+1. **Elderly-Friendly UI**: High-contrast contrast palettes, large touch buttons, legible typography (Google Fonts Outfit), and direct tab navigation. Supports a strict Dark and Light theme optimized to reduce strain.
+2. **Web Speech API & Voice Assistant Toggle**: 
    - **Voice commands** ("Show medicines", "Did I take medicine", "Call caregiver") supported in English, Spanish, and Hindi.
    - **Speech synthesis** readouts for prompts, intake checklists, and alarms.
-3. **Emergency SOS System**: One-click distress alarm that sounds a synthetic siren using Web Audio API, retrieves coordinates via the Geolocation API, and registers active logs for caregiver supervision.
-4. **Caregiver Portal**: Allows link authorization using patient emails, today's compliance summaries, active SOS map navigation, and remaining medicine stocks.
-5. **AI Insights & Habit Chatbot**: Powered by OpenAI with fail-safe rule engines calculating 30-day compliance percentages and period-based failures (e.g. morning vs evening skips).
-6. **Robust Offline Support**: LocalStorage queue that caches medication checklists offline and auto-syncs changes when internet connection is restored.
+   - **Voice Toggle Switch**: A global switch in settings to completely turn ON/OFF voice synthesis and listening overlays.
+3. **AI Prescription Analyzer & OCR**:
+   - **Client-Side OCR**: Uses `tesseract.js` to parse text locally from PNG/JPG image uploads.
+   - **AI Simplified Summary**: Translates doctor prescriptions, blood test results, and reports into layperson terms, extracting medication timings, dosages, warning interactions, and side effects.
+   - **One-Click Reminder Integration**: Add extracted medicines directly to your daily scheduler with a single button.
+4. **Emergency SOS System**: One-click distress alarm that sounds a synthetic siren using Web Audio API, retrieves coordinates via the Geolocation API, and registers active logs for caregiver supervision.
+5. **Firebase Push Notifications**: Receives immediate warnings on caregiver dashboards for missed medication habits and SOS distress triggers.
+6. **Caregiver Portal**: Allows link authorization using patient emails, today's compliance summaries, active SOS map navigation, and remaining medicine stocks.
+7. **AI Insights & Habit Chatbot**: Powered by OpenAI with fail-safe rule engines calculating 30-day compliance percentages and period-based failures (e.g. morning vs evening skips).
+8. **Robust Offline Support**: LocalStorage queue that caches medication checklists offline and auto-syncs changes when internet connection is restored.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React (Vite), Tailwind CSS, Lucide Icons, Axios.
-- **Backend**: Node.js, Express.js, MongoDB (Mongoose).
+- **Frontend**: React (Vite), Tailwind CSS, Lucide Icons, Axios, `tesseract.js` (OCR).
+- **Backend**: Node.js, Express.js, MongoDB (Mongoose), Firebase Admin SDK.
 - **Authentication**: JWT token authorization.
 - **Voice APIs**: HTML5 Speech Synthesis and Speech Recognition.
 - **SOS Alarms**: HTML5 Geolocation API, Web Audio API synthesizer.
+- **AI Integrations**: OpenAI API (gpt-3.5-turbo).
 
 ---
 
@@ -35,6 +42,7 @@ MediCare AI is a full-stack, voice-enabled, AI-powered medical reminder applicat
 │   │   ├── aiController.js
 │   │   ├── authController.js
 │   │   ├── caregiverController.js
+│   │   ├── medicalReportController.js
 │   │   ├── medicineController.js
 │   │   ├── reminderController.js
 │   │   └── sosController.js
@@ -42,13 +50,16 @@ MediCare AI is a full-stack, voice-enabled, AI-powered medical reminder applicat
 │   │   └── authMiddleware.js
 │   ├── models/
 │   │   ├── EmergencyAlert.js
+│   │   ├── MedicalReport.js
 │   │   ├── Medicine.js
 │   │   ├── ReminderLog.js
-│   │   └── User.js
+│   │   ├── User.js
+│   │   └── mockDb.js
 │   ├── routes/
 │   │   ├── ai.js
 │   │   ├── auth.js
 │   │   ├── caregiver.js
+│   │   ├── medicalReports.js
 │   │   ├── medicines.js
 │   │   ├── reminders.js
 │   │   └── sos.js
@@ -67,6 +78,7 @@ MediCare AI is a full-stack, voice-enabled, AI-powered medical reminder applicat
     │   │   ├── ElderlyDashboard.jsx
     │   │   ├── Login.jsx
     │   │   ├── MedicineManager.jsx
+    │   │   ├── PrescriptionAnalyzer.jsx
     │   │   ├── Settings.jsx
     │   │   └── Signup.jsx
     │   ├── services/
@@ -105,7 +117,14 @@ MediCare AI is a full-stack, voice-enabled, AI-powered medical reminder applicat
      ```bash
      copy .env.example .env
      ```
-   - Customize connection URIs, PORT, and add your `OPENAI_API_KEY` (if using OpenAI services).
+   - Customize connection URIs, PORT, and add your API keys:
+     ```env
+     PORT=5000
+     MONGO_URI=mongodb://localhost:27017/medicare-ai
+     JWT_SECRET=medicare_default_secret
+     OPENAI_API_KEY=your_openai_api_key_here
+     FIREBASE_SERVICE_ACCOUNT_PATH=path_to_firebase_service_account.json
+     ```
 4. Run the server:
    ```bash
    npm start
@@ -131,7 +150,7 @@ MediCare AI is a full-stack, voice-enabled, AI-powered medical reminder applicat
 
 ## 🗣️ Supported Voice Commands
 
-To toggle listening, click the **large yellow microphone button** in the bottom-right corner. It will say *"How can I help you?"* and display a *"Listening..."* bubble.
+To toggle listening, click the **large green microphone button** in the bottom-right corner. It will say *"How can I help you?"* and display a *"Listening..."* bubble. (Note: The floating mic overlay is hidden if the Voice Assistant is toggled OFF in settings).
 
 | Command | Action Performed | Supported Languages |
 | :--- | :--- | :--- |
@@ -143,7 +162,7 @@ To toggle listening, click the **large yellow microphone button** in the bottom-
 
 ---
 
-## 📡 API Reference endpoints
+## 📡 API Reference Endpoints
 
 All endpoints (except auth routes) require standard JWT token validation headers in format `Authorization: Bearer <JWT_Token>`.
 
@@ -151,10 +170,10 @@ All endpoints (except auth routes) require standard JWT token validation headers
 - `POST /signup` : Create patient or caregiver accounts.
 - `POST /login` : Authenticate credentials and return token payloads.
 - `GET /me` : Fetch the logged-in user profile.
-- `PUT /preferences` : Update language values, dark/light theme, and caregiver link mappings.
+- `PUT /preferences` : Update language values, dark/light theme, and voice assistant toggle state.
 
 ### Medicines Router (`/api/medicines`)
-- `POST /` : Create a medicine configuration.
+- `POST /` : Create a medicine configuration (supports base64 prescription file uploads).
 - `GET /` : Retrieve active medications.
 - `GET /:id` : Retrieve specific medicine information.
 - `PUT /:id` : Update details or top-up stocks.
@@ -174,3 +193,18 @@ All endpoints (except auth routes) require standard JWT token validation headers
 ### AI Assistant Router (`/api/ai`)
 - `GET /analysis` : Calculate compliance stats and return OpenAI insights or rule templates.
 - `POST /chat` : Ask health assistance questions.
+
+### Medical Reports Router (`/api/reports`)
+- `POST /analyze` : Send extracted prescription/report text for AI summary generation and timing extraction.
+- `POST /save` : Save analyzed report data to user's history log.
+- `GET /` : Retrieve all past report histories for the user.
+
+---
+
+## 📝 Changelog
+
+### v1.1.0 (Latest Release)
+* **AI Prescription Analyzer**: Added client-side OCR text extraction using `tesseract.js` and a PDF scanning pipeline. Connects to backend endpoints and OpenAI to output simplified summaries, side effects, and pre-formatted reminder scheduling buttons.
+* **Global Voice Toggle setting**: Added toggle switches to Settings allowing users to disable the speech engine, which silences synthesis feedback and hides the speech listening overlays.
+* **Theme System Correction**: Fixed CSS binding bugs that inverted light and dark themes. Redesigned all inputs, cards, and text styling following minimal Notion and ChatGPT themes.
+* **Prescription Upload Mappings**: Supported adding base64 documents directly to medication entries.
