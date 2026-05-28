@@ -24,8 +24,9 @@ const parseLocalText = (text) => {
       keywords: ['paracetamol', 'acetaminophen', 'crocin', 'calpol'],
       name: 'Paracetamol',
       dosage: '500mg',
-      frequency: 'twice daily',
+      frequency: 'twice_daily',
       timings: ['08:00', '20:00'],
+      beforeAfterFood: 'after_food',
       summary: 'Paracetamol is used for pain relief and fever reduction.',
       sideEffect: 'Stomach upset if taken on an empty stomach.',
       foodPrecaution: 'Take after meals to protect your stomach.',
@@ -35,8 +36,9 @@ const parseLocalText = (text) => {
       keywords: ['metformin', 'glucophage', 'glycomet'],
       name: 'Metformin',
       dosage: '500mg',
-      frequency: 'twice daily',
+      frequency: 'twice_daily',
       timings: ['08:00', '20:00'],
+      beforeAfterFood: 'after_food',
       summary: 'Metformin helps control blood sugar levels for diabetes.',
       sideEffect: 'Nausea, mild diarrhea, or a metallic taste in the mouth.',
       foodPrecaution: 'Take with or immediately after meals to reduce stomach side effects.',
@@ -46,8 +48,9 @@ const parseLocalText = (text) => {
       keywords: ['atorvastatin', 'lipitor', 'atorva'],
       name: 'Atorvastatin',
       dosage: '20mg',
-      frequency: 'once daily',
+      frequency: 'once_daily',
       timings: ['21:00'],
+      beforeAfterFood: 'anytime',
       summary: 'Atorvastatin lowers cholesterol levels and protects the heart.',
       sideEffect: 'Mild muscle aches or headache.',
       foodPrecaution: 'Avoid drinking grapefruit juice as it increases drug concentration.',
@@ -57,8 +60,9 @@ const parseLocalText = (text) => {
       keywords: ['amlodipine', 'norvasc', 'amlo'],
       name: 'Amlodipine',
       dosage: '5mg',
-      frequency: 'once daily',
+      frequency: 'once_daily',
       timings: ['08:00'],
+      beforeAfterFood: 'anytime',
       summary: 'Amlodipine relaxes blood vessels to lower high blood pressure.',
       sideEffect: 'Swelling in the ankles or feet, dizziness, or flushing.',
       foodPrecaution: 'Can be taken with or without food.',
@@ -68,8 +72,9 @@ const parseLocalText = (text) => {
       keywords: ['lisinopril', 'zestril', 'prinivil'],
       name: 'Lisinopril',
       dosage: '10mg',
-      frequency: 'once daily',
+      frequency: 'once_daily',
       timings: ['08:00'],
+      beforeAfterFood: 'before_food',
       summary: 'Lisinopril is used to treat high blood pressure and heart failure.',
       sideEffect: 'A dry, persistent cough or lightheadedness.',
       foodPrecaution: 'Avoid salt substitutes containing potassium without asking your doctor.',
@@ -79,8 +84,9 @@ const parseLocalText = (text) => {
       keywords: ['ibuprofen', 'advil', 'brufen', 'motrin'],
       name: 'Ibuprofen',
       dosage: '400mg',
-      frequency: 'twice daily as needed',
+      frequency: 'twice_daily',
       timings: ['12:00', '20:00'],
+      beforeAfterFood: 'after_food',
       summary: 'Ibuprofen reduces pain, swelling, and inflammation.',
       sideEffect: 'Heartburn or stomach irritation.',
       foodPrecaution: 'Always take with food or milk to prevent stomach pain.',
@@ -90,8 +96,9 @@ const parseLocalText = (text) => {
       keywords: ['aspirin', 'ecotrin'],
       name: 'Aspirin',
       dosage: '75mg',
-      frequency: 'once daily',
+      frequency: 'once_daily',
       timings: ['08:00'],
+      beforeAfterFood: 'after_food',
       summary: 'Aspirin is used as a blood thinner to prevent heart attacks or strokes.',
       sideEffect: 'Increased tendency to bleed or bruise easily.',
       foodPrecaution: 'Take with food to minimize stomach upset.',
@@ -108,7 +115,8 @@ const parseLocalText = (text) => {
         name: item.name,
         dosage: item.dosage,
         frequency: item.frequency,
-        timings: item.timings
+        timings: item.timings,
+        beforeAfterFood: item.beforeAfterFood
       });
       summaries.push(item.summary);
       if (item.sideEffect) sideEffects.push(item.sideEffect);
@@ -130,8 +138,9 @@ const parseLocalText = (text) => {
         medicines.push({
           name: name,
           dosage: match[2],
-          frequency: 'once daily',
-          timings: ['09:00']
+          frequency: 'once_daily',
+          timings: ['09:00'],
+          beforeAfterFood: 'anytime'
         });
         count++;
       }
@@ -141,8 +150,9 @@ const parseLocalText = (text) => {
       medicines.push({
         name: 'Prescribed Pill',
         dosage: '1 tablet',
-        frequency: 'once daily',
-        timings: ['08:00']
+        frequency: 'once_daily',
+        timings: ['08:00'],
+        beforeAfterFood: 'anytime'
       });
     }
 
@@ -178,15 +188,19 @@ exports.analyzePrescriptionText = async (req, res) => {
           You are a professional medical AI assistant specialized in parsing prescription documents and medical reports for elderly patients.
           Analyze the following prescription text and return a valid JSON object ONLY. Do not wrap it in markdown formatting, backticks, or any conversational text. Just return the JSON object directly.
           
+          CRITICAL STEP - OCR TYPO CORRECTION:
+          Identify and clean common OCR scanning errors in the medicine names. For example, if you see 'Do1o 650' correct it to 'Dolo 650'. If you see '1isinopri1' correct it to 'Lisinopril'. Standardize spelling of medications.
+          
           The JSON format must strictly be:
           {
             "aiSummary": "A very simple, friendly, easy-to-understand 2-3 sentence explanation of what this prescription is for (written for an 80-year old user)",
             "extractedMedicines": [
               {
-                "name": "Medicine Name (properly capitalized)",
+                "name": "Medicine Name (properly capitalized and corrected for OCR typos)",
                 "dosage": "dosage string (e.g. 500mg, 1 tablet)",
-                "frequency": "frequency string (e.g. twice daily)",
-                "timings": ["HH:MM", "HH:MM"] // 24hr formatted string timings based on frequency. E.g. twice daily -> ["08:00", "20:00"]. If frequency is once daily in morning -> ["08:00"]. If bed time -> ["21:00"]
+                "frequency": "frequency string (must be exactly 'daily', 'twice_daily', or 'weekly')",
+                "timings": ["HH:MM", "HH:MM"], // 24hr formatted string timings based on frequency. E.g. twice_daily -> ["08:00", "20:00"]. If frequency is daily in morning -> ["08:00"]. If bedtime -> ["21:00"]
+                "beforeAfterFood": "food relationship (must be exactly 'before_food', 'after_food', 'with_food', or 'anytime')"
               }
             ],
             "healthInsights": {
