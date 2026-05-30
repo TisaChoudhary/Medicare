@@ -7,7 +7,6 @@ const authRoutes = require('./routes/auth');
 const medicineRoutes = require('./routes/medicines');
 const reminderRoutes = require('./routes/reminders');
 const caregiverRoutes = require('./routes/caregiver');
-const sosRoutes = require('./routes/sos');
 const aiRoutes = require('./routes/ai');
 const reportRoutes = require('./routes/medicalReports');
 
@@ -22,7 +21,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/caregiver', caregiverRoutes);
-app.use('/api/sos', sosRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/reports', reportRoutes);
 

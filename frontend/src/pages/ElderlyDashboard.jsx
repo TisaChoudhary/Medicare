@@ -5,7 +5,6 @@ import { speak } from '../services/voiceService';
 import { offlineService } from '../services/offlineService';
 import { translations } from '../services/translations';
 import MedicineCard from '../components/MedicineCard';
-import EmergencySOS from '../components/EmergencySOS';
 
 const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
   const [reminders, setReminders] = useState([]);
@@ -245,10 +244,6 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
         )}
       </div>
 
-      {/* Emergency SOS widget */}
-      <div className="border-t border-neutral-200 dark:border-neutral-800 pt-8">
-        <EmergencySOS lang={lang} voiceSpeed={voiceSpeed} />
-      </div>
     </div>
   );
 };

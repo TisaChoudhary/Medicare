@@ -127,7 +127,7 @@ const getSmartFallbackAnswer = (question) => {
 
   // 5. Emergency Mappings
   if (query.includes('caregiver') || query.includes('call') || query.includes('sos') || query.includes('emergency') || query.includes('help')) {
-    emergencyInfo = "🚨 Emergency: If you need immediate assistance, click the red EMERGENCY SOS button on your screen or say 'Call caregiver' to sound the alarm and share your live coordinates.";
+    emergencyInfo = "🚨 Emergency: If you need immediate assistance, please call your caregiver or contact local emergency services directly.";
   }
 
   // Assemble dynamic response
@@ -140,7 +140,7 @@ const getSmartFallbackAnswer = (question) => {
 
   // Default fallback if no keywords match
   if (parts.length === 0) {
-    return "Hello! I am your MediCare AI helper. You can ask me questions about your medicine rules (before/after food), what to do if you miss a dose, senior exercises, body aches, throat symptoms, or how to contact your caregiver. How can I help you today?";
+    return "Hello! I am your MediCare AI helper. You can ask me questions about your medicine rules (before/after food), what to do if you miss a dose, senior exercises, body aches, or throat symptoms. How can I help you today?";
   }
 
   // Combined Warning note

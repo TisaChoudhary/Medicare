@@ -110,21 +110,6 @@ export const caregiverAPI = {
   },
 };
 
-export const sosAPI = {
-  trigger: async (latitude = null, longitude = null) => {
-    const res = await api.post('/sos/trigger', { latitude, longitude });
-    return res.data;
-  },
-  getActive: async () => {
-    const res = await api.get('/sos/active');
-    return res.data;
-  },
-  resolve: async (alertId) => {
-    const res = await api.put(`/sos/resolve/${alertId}`);
-    return res.data;
-  },
-};
-
 export const aiAPI = {
   getAnalysis: async () => {
     const res = await api.get('/ai/analysis');

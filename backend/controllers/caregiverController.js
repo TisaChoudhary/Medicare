@@ -1,6 +1,5 @@
 const User = require('../models/User');
 const ReminderLog = require('../models/ReminderLog');
-const EmergencyAlert = require('../models/EmergencyAlert');
 const mongoose = require('mongoose');
 const mockDb = require('../models/mockDb');
 
@@ -158,8 +157,6 @@ exports.getPatientsOverview = async (req, res) => {
         const missed = todayLogs.filter(l => l.status === 'missed').length;
         const pending = todayLogs.filter(l => l.status === 'pending').length;
 
-        const activeAlert = await EmergencyAlert.findOne({ userId: patient._id, status: 'active' });
-
         overview.push({
           patient: {
             id: patient._id,
@@ -170,9 +167,9 @@ exports.getPatientsOverview = async (req, res) => {
             emergencyContactPhone: patient.emergencyContactPhone
           },
           todayStats: { total, taken, missed, pending },
-          activeSOS: !!activeAlert,
-          activeSOSId: activeAlert ? activeAlert._id : null,
-          activeSOSLocation: activeAlert ? activeAlert.location : null
+          activeSOS: false,
+          activeSOSId: null,
+          activeSOSLocation: null
         });
       }
       return res.json({ success: true, overview });
@@ -187,8 +184,6 @@ exports.getPatientsOverview = async (req, res) => {
         const missed = todayLogs.filter(l => l.status === 'missed').length;
         const pending = todayLogs.filter(l => l.status === 'pending').length;
 
-        const activeAlert = mockDb.emergencyAlerts.find(a => a.userId === patient.id && a.status === 'active');
-
         overview.push({
           patient: {
             id: patient.id,
@@ -199,9 +194,9 @@ exports.getPatientsOverview = async (req, res) => {
             emergencyContactPhone: patient.emergencyContactPhone
           },
           todayStats: { total, taken, missed, pending },
-          activeSOS: !!activeAlert,
-          activeSOSId: activeAlert ? activeAlert.id : null,
-          activeSOSLocation: activeAlert ? activeAlert.location : null
+          activeSOS: false,
+          activeSOSId: null,
+          activeSOSLocation: null
         });
       }
       return res.json({ success: true, overview });

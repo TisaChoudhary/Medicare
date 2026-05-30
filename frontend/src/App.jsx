@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Pill, Brain, Settings as SettingsIcon, LogOut, ShieldAlert } from 'lucide-react';
+import { Home, Pill, Brain, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { translations } from './services/translations';
 import { speak } from './services/voiceService';
-import { sosAPI, reminderAPI } from './services/api';
+import { reminderAPI } from './services/api';
 
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -73,15 +73,7 @@ const App = () => {
     } else if (command === 'OPEN_CHATBOT') {
       setCurrentPage('chatbot');
       speak("Opening AI chatbot assistant.", lang, voiceSpeed);
-    } else if (command === 'TRIGGER_SOS') {
-      speak("Voice command received. Triggering emergency SOS alert.", lang, voiceSpeed);
-      try {
-        await sosAPI.trigger(null, null);
-        speak("SOS triggered successfully. Caregiver notified.", lang, voiceSpeed);
-        alert("SOS Alert Triggered!");
-      } catch (err) {
-        console.error(err);
-      }
+
     } else if (command === 'CHECK_STATUS') {
       try {
         const todayStr = new Date().toISOString().split('T')[0];

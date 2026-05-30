@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, ShieldAlert, CheckCircle, AlertTriangle, Link2, MapPin, Check } from 'lucide-react';
-import { caregiverAPI, sosAPI } from '../services/api';
+import { User, Mail, CheckCircle, AlertTriangle, Link2 } from 'lucide-react';
+import { caregiverAPI } from '../services/api';
 import { translations } from '../services/translations';
 
 const CaregiverDashboard = ({ lang = 'en' }) => {
   const [patients, setPatients] = useState([]);
   const [patientEmailInput, setPatientEmailInput] = useState('');
-  const [activeSOSAlerts, setActiveSOSAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -18,10 +17,6 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
       // Get caregiver patients overview
       const data = await caregiverAPI.getOverview();
       setPatients(data.overview);
-
-      // Get active emergency alerts
-      const sosData = await sosAPI.getActive();
-      setActiveSOSAlerts(sosData.alerts);
     } catch (err) {
       console.error('Error fetching caregiver overview details:', err);
     }
@@ -55,14 +50,7 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
     }
   };
 
-  const handleResolveSOS = async (alertId) => {
-    try {
-      await sosAPI.resolve(alertId);
-      fetchData();
-    } catch (err) {
-      console.error('Error resolving SOS:', err);
-    }
-  };
+
 
   return (
     <div className="space-y-8 p-4 md:p-8 max-w-6xl mx-auto">
@@ -71,51 +59,6 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
         <h1 className="text-4xl font-black text-neutral-900 dark:text-white uppercase">{t.caregiverPortal}</h1>
         <p className="text-lg font-bold text-neutral-500 dark:text-neutral-400 mt-1">Monitor patients compliance and respond to emergencies.</p>
       </div>
-
-      {/* Emergency Alerts Panel */}
-      {activeSOSAlerts.length > 0 && (
-        <div className="bg-red-500/10 border border-red-500 rounded-3xl p-6 shadow-sm space-y-4 animate-pulse">
-          <div className="flex items-center gap-3 text-red-650 dark:text-red-400">
-            <ShieldAlert className="w-10 h-10 flex-shrink-0" />
-            <h2 className="text-2xl md:text-3xl font-black uppercase">
-              {lang === 'es' ? '¡ALERTAS DE EMERGENCIA ACTIVAS!' : lang === 'hi' ? 'सक्रिय आपातकालीन अलर्ट!' : 'ACTIVE EMERGENCY SOS ALERTS!'}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeSOSAlerts.map((alert) => (
-              <div key={alert._id} className="bg-white dark:bg-[#121212] border border-red-500 rounded-2xl p-5 text-neutral-900 dark:text-white flex flex-col justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-extrabold text-neutral-900 dark:text-white">{alert.userId?.name}</h3>
-                  <p className="text-sm font-bold text-neutral-500 mt-1">Phone: {alert.userId?.phone || 'No phone'}</p>
-                  
-                  {alert.location?.latitude && (
-                    <div className="mt-3 flex items-center gap-2 text-emerald-600 font-extrabold">
-                      <MapPin className="w-5 h-5 text-emerald-500" />
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${alert.location.latitude},${alert.location.longitude}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline text-md"
-                      >
-                        View Live Location on Map
-                      </a>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => handleResolveSOS(alert._id)}
-                  className="w-full py-3 bg-red-650 hover:bg-red-700 text-white font-extrabold text-lg rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <Check className="w-5 h-5" />
-                  <span>{t.resolveAlert}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Side: Overview & Link tools */}
