@@ -20,3 +20,7 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local Mock Database files
+mock_db_data.json
+

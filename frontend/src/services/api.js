@@ -22,6 +22,23 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response Interceptor: Auto-logout and redirect to Login screen on 401 Unauthorized errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('Unauthorized session detected (mock database reset or token expired). Wiping local session...');
+      const hasToken = localStorage.getItem('medicare_token');
+      if (hasToken) {
+        localStorage.removeItem('medicare_token');
+        localStorage.removeItem('medicare_user');
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authAPI = {
   login: async (credentials) => {
     const res = await api.post('/auth/login', credentials);
