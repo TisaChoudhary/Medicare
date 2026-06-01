@@ -46,7 +46,8 @@ const MedicineManager = ({ user, lang = 'en' }) => {
   const [editId, setEditId] = useState(null);
   
   const [name, setName] = useState('');
-  const [dosage, setDosage] = useState('');
+  const [dosage, setDosage] = useState('1');
+  const [dosageOption, setDosageOption] = useState('1'); // '1', '2', 'custom'
   const [frequency, setFrequency] = useState('daily');
   const [timings, setTimings] = useState(['08:00']);
   const [beforeAfterFood, setBeforeAfterFood] = useState('anytime');
@@ -130,7 +131,8 @@ const MedicineManager = ({ user, lang = 'en' }) => {
 
   const resetForm = () => {
     setName('');
-    setDosage('');
+    setDosage('1');
+    setDosageOption('1');
     setFrequency('daily');
     setTimings(['08:00']);
     setBeforeAfterFood('anytime');
@@ -185,6 +187,11 @@ const MedicineManager = ({ user, lang = 'en' }) => {
     setEditId(med._id);
     setName(med.name);
     setDosage(med.dosage);
+    if (med.dosage === '1' || med.dosage === '2') {
+      setDosageOption(med.dosage);
+    } else {
+      setDosageOption('custom');
+    }
     setFrequency(med.frequency);
     setTimings(med.timings);
     setBeforeAfterFood(med.beforeAfterFood);
@@ -273,14 +280,41 @@ const MedicineManager = ({ user, lang = 'en' }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-lg font-extrabold text-neutral-900 dark:text-neutral-300 mb-2">{t.dosage}</label>
-                <input
-                  type="text"
-                  value={dosage}
-                  onChange={(e) => setDosage(e.target.value)}
-                  required
-                  placeholder="e.g. 1 pill"
-                  className="w-full p-4 border border-neutral-300 dark:border-neutral-700 rounded-2xl font-bold bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white focus:outline-none focus:border-[#16a34a]"
-                />
+                <div className="flex gap-2 mb-2">
+                  {['1', '2', 'custom'].map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        setDosageOption(opt);
+                        if (opt !== 'custom') {
+                          setDosage(opt);
+                        } else {
+                          if (dosage === '1' || dosage === '2') {
+                            setDosage('');
+                          }
+                        }
+                      }}
+                      className={`flex-1 py-3 border font-extrabold rounded-xl transition-all capitalize text-center text-sm md:text-base ${
+                        dosageOption === opt 
+                          ? 'bg-[#16a34a] text-white border-transparent shadow-sm' 
+                          : 'bg-neutral-50 dark:bg-[#121212] text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      }`}
+                    >
+                      {opt === 'custom' ? 'Custom' : opt}
+                    </button>
+                  ))}
+                </div>
+                {dosageOption === 'custom' && (
+                  <input
+                    type="text"
+                    value={dosage}
+                    onChange={(e) => setDosage(e.target.value)}
+                    required
+                    placeholder="e.g. 1.5 pills"
+                    className="w-full p-4 border border-neutral-300 dark:border-neutral-700 rounded-2xl font-bold bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white focus:outline-none focus:border-[#16a34a]"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-lg font-extrabold text-neutral-900 dark:text-neutral-300 mb-2">{t.frequency}</label>
