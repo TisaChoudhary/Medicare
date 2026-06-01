@@ -43,7 +43,7 @@ const makeProxy = (obj) => {
   return new Proxy(obj, {
     get(target, prop, receiver) {
       const val = Reflect.get(target, prop, receiver);
-      if (typeof val === 'object' && val !== null) {
+      if (typeof val === 'object' && val !== null && !(val instanceof Date)) {
         return makeProxy(val);
       }
       return val;
