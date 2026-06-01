@@ -15,7 +15,14 @@ let rawData = {
 // Load existing data if file exists
 if (fs.existsSync(DB_FILE)) {
   try {
-    rawData = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    const loaded = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    rawData = {
+      users: Array.isArray(loaded.users) ? loaded.users : [],
+      medicines: Array.isArray(loaded.medicines) ? loaded.medicines : [],
+      reminderLogs: Array.isArray(loaded.reminderLogs) ? loaded.reminderLogs : [],
+      emergencyAlerts: Array.isArray(loaded.emergencyAlerts) ? loaded.emergencyAlerts : [],
+      medicalReports: Array.isArray(loaded.medicalReports) ? loaded.medicalReports : []
+    };
     console.log('Loaded mock DB data from persistent file.');
   } catch (e) {
     console.error('Error reading mock DB file:', e.message);
