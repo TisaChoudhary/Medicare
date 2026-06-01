@@ -3,6 +3,39 @@ import { Plus, Trash, Save, Edit3, Trash2, Pill, User } from 'lucide-react';
 import { medicineAPI, caregiverAPI } from '../services/api';
 import { translations } from '../services/translations';
 
+// Time formatting helper constants and functions for the 12-hour drop-down clock format
+const hoursList = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+const minutesList = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+const periodsList = ['AM', 'PM'];
+
+const parseTime24To12 = (time24) => {
+  if (!time24) return { hour: '08', minute: '00', period: 'AM' };
+  const [hStr, mStr] = time24.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  let period = 'AM';
+  if (h >= 12) {
+    period = 'PM';
+    if (h > 12) h -= 12;
+  } else if (h === 0) {
+    h = 12;
+  }
+  const hFormatted = h.toString().padStart(2, '0');
+  return { hour: hFormatted, minute: m, period };
+};
+
+const formatTime12To24 = (hour12, minute, period) => {
+  let h = parseInt(hour12, 10);
+  if (period === 'PM' && h < 12) {
+    h += 12;
+  } else if (period === 'AM' && h === 12) {
+    h = 0;
+  }
+  const hStr = h.toString().padStart(2, '0');
+  const mStr = minute.toString().padStart(2, '0');
+  return `${hStr}:${mStr}`;
+};
+
 const MedicineManager = ({ user, lang = 'en' }) => {
   const [medicines, setMedicines] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -277,26 +310,55 @@ const MedicineManager = ({ user, lang = 'en' }) => {
               </div>
 
               <div className="space-y-2">
-                {timings.map((time, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => handleTimingChange(idx, e.target.value)}
-                      required
-                      className="flex-1 p-3 border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white rounded-xl font-bold"
-                    />
-                    {timings.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTiming(idx)}
-                        className="p-3 bg-red-500/10 hover:bg-red-500/20 border border-red-300 dark:border-red-800 text-red-600 rounded-xl transition-all"
-                      >
-                        <Trash className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {timings.map((time, idx) => {
+                  const parsed = parseTime24To12(time);
+                  return (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <div className="flex-1 flex gap-2 items-center">
+                        <select
+                          value={parsed.hour}
+                          onChange={(e) => handleTimingChange(idx, formatTime12To24(e.target.value, parsed.minute, parsed.period))}
+                          className="flex-1 p-3 border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white rounded-xl font-bold text-center focus:outline-none focus:border-[#16a34a]"
+                        >
+                          {hoursList.map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        
+                        <span className="text-xl font-bold text-neutral-400">:</span>
+                        
+                        <select
+                          value={parsed.minute}
+                          onChange={(e) => handleTimingChange(idx, formatTime12To24(parsed.hour, e.target.value, parsed.period))}
+                          className="flex-1 p-3 border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white rounded-xl font-bold text-center focus:outline-none focus:border-[#16a34a]"
+                        >
+                          {minutesList.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        
+                        <select
+                          value={parsed.period}
+                          onChange={(e) => handleTimingChange(idx, formatTime12To24(parsed.hour, parsed.minute, e.target.value))}
+                          className="p-3 border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white rounded-xl font-bold text-center focus:outline-none focus:border-[#16a34a]"
+                        >
+                          {periodsList.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {timings.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTiming(idx)}
+                          className="p-3 bg-red-500/10 hover:bg-red-500/20 border border-red-300 dark:border-red-800 text-red-600 rounded-xl transition-all"
+                        >
+                          <Trash className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
