@@ -47,7 +47,7 @@ const Login = ({ setSession, lang = 'en', setLang, voiceSpeed = 0.85, onNavigate
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0f0f0f] flex flex-col justify-center items-center p-4">
       {/* Language Toggle on top */}
       <div className="mb-6 flex gap-3">
-        {['en', 'es', 'hi'].map((l) => (
+        {['en', 'hi'].map((l) => (
           <button
             key={l}
             onClick={() => setLang(l)}
@@ -57,7 +57,7 @@ const Login = ({ setSession, lang = 'en', setLang, voiceSpeed = 0.85, onNavigate
                 : 'bg-white dark:bg-[#1f1f1f] text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-850 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            {l === 'en' ? 'English' : l === 'es' ? 'Español' : 'हिंदी'}
+            {l === 'en' ? 'English' : 'हिंदी'}
           </button>
         ))}
       </div>

@@ -18,12 +18,20 @@ export const speak = (text, lang = 'en', rate = 0.85) => {
   const utterance = new SpeechSynthesisUtterance(text);
   
   // Set language
-  if (lang === 'es') {
-    utterance.lang = 'es-ES';
-  } else if (lang === 'hi') {
+  if (lang === 'hi') {
     utterance.lang = 'hi-IN';
   } else {
     utterance.lang = 'en-US';
+  }
+
+  // Set custom voice if preferred in settings
+  const preferredVoiceName = localStorage.getItem('medicare_voice_name');
+  if (preferredVoiceName) {
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name === preferredVoiceName);
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
   }
 
   // Slower rate for elderly users
@@ -72,25 +80,6 @@ export const parseCommand = (transcript, lang = 'en') => {
       return { command: 'OPEN_CHATBOT' };
     }
     if (text.includes('go home') || text.includes('show dashboard') || text.includes('open dashboard')) {
-      return { command: 'SHOW_DASHBOARD' };
-    }
-  }
-
-  // Spanish Commands
-  if (lang === 'es') {
-    if (text.includes('mostrar medicina') || text.includes('ver medicina') || text.includes('mis medicinas')) {
-      return { command: 'SHOW_MEDICINES' };
-    }
-    if (text.includes('ya tomé') || text.includes('tome mi medicina') || text.includes('estado de medicina')) {
-      return { command: 'CHECK_STATUS' };
-    }
-    if (text.includes('llamar cuidador') || text.includes('emergencia') || text.includes('auxilio') || text.includes('ayuda')) {
-      return { command: 'TRIGGER_SOS' };
-    }
-    if (text.includes('abrir chatbot') || text.includes('hablar con ia')) {
-      return { command: 'OPEN_CHATBOT' };
-    }
-    if (text.includes('ir a inicio') || text.includes('ver tablero') || text.includes('inicio')) {
       return { command: 'SHOW_DASHBOARD' };
     }
   }

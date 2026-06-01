@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Languages, SunMoon, Volume2, Save, UserCheck, ShieldCheck } from 'lucide-react';
 import { authAPI } from '../services/api';
 import { translations } from '../services/translations';
@@ -10,6 +10,21 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
   const [emergencyContactName, setEmergencyContactName] = useState(user.emergencyContactName || '');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(user.emergencyContactPhone || '');
   const [voiceAssistantActive, setVoiceAssistantActive] = useState(user.voiceAssistantActive !== false);
+  
+  const [voices, setVoices] = useState([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState(localStorage.getItem('medicare_voice_name') || '');
+
+  useEffect(() => {
+    const updateVoices = () => {
+      if ('speechSynthesis' in window) {
+        setVoices(window.speechSynthesis.getVoices());
+      }
+    };
+    updateVoices();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+  }, []);
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -84,8 +99,8 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
             <Languages className="w-6 h-6 text-[#16a34a]" />
             <span>{t.language}</span>
           </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {['en', 'es', 'hi'].map((l) => (
+          <div className="grid grid-cols-2 gap-2">
+            {['en', 'hi'].map((l) => (
               <button
                 key={l}
                 type="button"
@@ -96,7 +111,7 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
                     : 'bg-neutral-50 dark:bg-[#121212] text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                 }`}
               >
-                {l === 'en' ? 'English' : l === 'es' ? 'Español' : 'हिंदी'}
+                {l === 'en' ? 'English' : 'हिंदी'}
               </button>
             ))}
           </div>
@@ -170,7 +185,7 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
         <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-4">
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
             <Volume2 className="w-6 h-6 text-[#16a34a]" />
-            <span>{lang === 'es' ? 'Asistente de Voz' : lang === 'hi' ? 'आवाज सहायक' : 'Voice Assistant'}</span>
+            <span>{lang === 'hi' ? 'आवाज सहायक' : 'Voice Assistant'}</span>
           </h2>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -182,7 +197,7 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
                   : 'bg-neutral-50 dark:bg-[#121212] text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'
               }`}
             >
-              {lang === 'es' ? 'ACTIVADO' : lang === 'hi' ? 'चालू' : 'ON (Enabled)'}
+              {lang === 'hi' ? 'चालू' : 'ON (Enabled)'}
             </button>
             <button
               type="button"
@@ -193,16 +208,46 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
                   : 'bg-neutral-50 dark:bg-[#121212] text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'
               }`}
             >
-              {lang === 'es' ? 'DESACTIVADO' : lang === 'hi' ? 'बंद' : 'OFF (Disabled)'}
+              {lang === 'hi' ? 'बंद' : 'OFF (Disabled)'}
             </button>
           </div>
         </div>
+
+        {/* Custom Voice Selection */}
+        {voiceAssistantActive && voices.length > 0 && (
+          <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-4">
+            <h2 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
+              <Volume2 className="w-6 h-6 text-[#16a34a]" />
+              <span>{lang === 'hi' ? 'आवाज टोन / स्पीकर' : 'Voice Speaker Tone'}</span>
+            </h2>
+            <div>
+              <label className="block text-sm font-bold text-neutral-500 dark:text-neutral-400 mb-2">
+                {lang === 'hi' ? 'उपलब्ध आवाजें चुनें (आपके डिवाइस से):' : 'Select a voice speaker from your device:'}
+              </label>
+              <select
+                value={selectedVoiceName}
+                onChange={(e) => {
+                  setSelectedVoiceName(e.target.value);
+                  localStorage.setItem('medicare_voice_name', e.target.value);
+                }}
+                className="w-full p-4 border border-neutral-300 dark:border-neutral-700 rounded-2xl font-bold bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white focus:outline-none focus:border-[#16a34a] text-lg animate-fade-in"
+              >
+                <option value="">{lang === 'hi' ? 'सिस्टम डिफ़ॉल्ट आवाज' : 'System Default Voice'}</option>
+                {voices.map(voice => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name} ({voice.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* Emergency Contacts Widget */}
         <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-4">
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
             <UserCheck className="w-6 h-6 text-[#16a34a]" />
-            <span>{lang === 'es' ? 'Contactos & Enlaces' : lang === 'hi' ? 'संपर्क और कनेक्शन' : 'Emergency Contacts & Connections'}</span>
+            <span>{lang === 'hi' ? 'संपर्क और कनेक्शन' : 'Emergency Contacts & Connections'}</span>
           </h2>
 
           <div className="space-y-4">
