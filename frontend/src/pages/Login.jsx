@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { LogIn, Key, Mail } from 'lucide-react';
 import { authAPI } from '../services/api';
 import { translations } from '../services/translations';
-import { speak } from '../services/voiceService';
 
-const Login = ({ setSession, lang = 'en', setLang, voiceSpeed = 0.85, onNavigate }) => {
+const Login = ({ setSession, lang = 'en', setLang, onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,20 +23,12 @@ const Login = ({ setSession, lang = 'en', setLang, voiceSpeed = 0.85, onNavigate
       localStorage.setItem('medicare_token', data.token);
       localStorage.setItem('medicare_user', JSON.stringify(data.user));
       
-      const welcome = {
-        en: `Welcome back, ${data.user.name}!`,
-        es: `¡Bienvenido de nuevo, ${data.user.name}!`,
-        hi: `स्वागत है, ${data.user.name}!`
-      };
-      speak(welcome[data.user.language || lang] || welcome.en, data.user.language || lang, voiceSpeed);
-      
       // Pass session state up
       setSession({ token: data.token, user: data.user });
     } catch (err) {
       console.error(err);
       const failText = err.response?.data?.message || 'Login failed. Please check credentials.';
       setErrorMsg(failText);
-      speak(failText, lang, voiceSpeed);
     } finally {
       setLoading(false);
     }

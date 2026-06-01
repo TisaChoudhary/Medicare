@@ -19,9 +19,8 @@ import {
 } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { reportAPI, medicineAPI } from '../services/api';
-import { speak } from '../services/voiceService';
 
-const PrescriptionAnalyzer = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
+const PrescriptionAnalyzer = ({ user, lang = 'en' }) => {
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [inputText, setInputText] = useState('');
@@ -333,17 +332,6 @@ const PrescriptionAnalyzer = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
       setIsSchedulesConfirmed(true);
       setSuccessMsg('Schedules created successfully! All reminders are active.');
 
-      // Spoken voice confirmation
-      if (localStorage.getItem('medicare_voice_assistant') !== 'off') {
-        const names = editableMedicines.map(m => m.name).join(', ');
-        const verbalConfirmation = {
-          en: `Your schedule has been confirmed. ${names} have been added to your daily reminders.`,
-          es: `Su horario ha sido confirmado. ${names} han sido agregados a sus recordatorios diarios.`,
-          hi: `आपका शेड्यूल पक्का हो गया है। ${names} को आपके दैनिक रिमाइंडर में जोड़ दिया गया है।`
-        };
-        speak(verbalConfirmation[lang] || verbalConfirmation.en, lang, voiceSpeed);
-      }
-
       // Clear reviews
       setEditableMedicines([]);
     } catch (err) {
@@ -578,26 +566,13 @@ const PrescriptionAnalyzer = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
           {analysisResult ? (
             <>
               {/* Result Header */}
-              <div className="bg-[#16a34a]/10 border border-[#16a34a] rounded-3xl p-5 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-black bg-[#16a34a]/20 text-[#16a34a] px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    Extracted Insights
-                  </span>
-                  <h2 className="text-2xl font-black text-neutral-900 dark:text-white mt-2">
-                    {analysisResult.fileName}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => {
-                    if (analysisResult.aiSummary) {
-                      speak(analysisResult.aiSummary, lang, voiceSpeed);
-                    }
-                  }}
-                  className="p-3 bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 text-[#16a34a] hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-full transition-all shadow-sm"
-                  title="Read summary verbally"
-                >
-                  <Volume2 className="w-6 h-6" />
-                </button>
+              <div className="bg-[#16a34a]/10 border border-[#16a34a] rounded-3xl p-5">
+                <span className="text-xs font-black bg-[#16a34a]/20 text-[#16a34a] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Extracted Insights
+                </span>
+                <h2 className="text-2xl font-black text-neutral-900 dark:text-white mt-2">
+                  {analysisResult.fileName}
+                </h2>
               </div>
 
               {/* Elderly Friendly Summary */}

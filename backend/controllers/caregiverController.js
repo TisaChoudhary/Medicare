@@ -2,6 +2,7 @@ const User = require('../models/User');
 const ReminderLog = require('../models/ReminderLog');
 const mongoose = require('mongoose');
 const mockDb = require('../models/mockDb');
+const CaregiverAlert = require('../models/CaregiverAlert');
 
 exports.getPatients = async (req, res) => {
   try {
@@ -157,6 +158,9 @@ exports.getPatientsOverview = async (req, res) => {
         const missed = todayLogs.filter(l => l.status === 'missed').length;
         const pending = todayLogs.filter(l => l.status === 'pending').length;
 
+        // Fetch patient's active alerts
+        const alerts = await CaregiverAlert.find({ patientId: patient._id, resolved: false }).sort({ createdAt: -1 });
+
         overview.push({
           patient: {
             id: patient._id,
@@ -169,7 +173,8 @@ exports.getPatientsOverview = async (req, res) => {
           todayStats: { total, taken, missed, pending },
           activeSOS: false,
           activeSOSId: null,
-          activeSOSLocation: null
+          activeSOSLocation: null,
+          activeAlerts: alerts
         });
       }
       return res.json({ success: true, overview });
@@ -184,6 +189,9 @@ exports.getPatientsOverview = async (req, res) => {
         const missed = todayLogs.filter(l => l.status === 'missed').length;
         const pending = todayLogs.filter(l => l.status === 'pending').length;
 
+        // Fetch patient's active alerts
+        const alerts = mockDb.caregiverAlerts.filter(a => a.patientId === patient.id && !a.resolved);
+
         overview.push({
           patient: {
             id: patient.id,
@@ -196,12 +204,76 @@ exports.getPatientsOverview = async (req, res) => {
           todayStats: { total, taken, missed, pending },
           activeSOS: false,
           activeSOSId: null,
-          activeSOSLocation: null
+          activeSOSLocation: null,
+          activeAlerts: alerts
         });
       }
       return res.json({ success: true, overview });
     }
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error getting patients overview', error: error.message });
+  }
+};
+
+exports.getCaregiverAlerts = async (req, res) => {
+  try {
+    if (req.user.role !== 'caregiver') {
+      return res.status(403).json({ success: false, message: 'Access denied: Caregiver role required' });
+    }
+
+    const isDbConnected = mongoose.connection.readyState === 1;
+
+    if (isDbConnected) {
+      const alerts = await CaregiverAlert.find({ caregiverId: req.user.id, resolved: false })
+        .sort({ createdAt: -1 });
+      return res.json({ success: true, alerts });
+    } else {
+      const alerts = mockDb.caregiverAlerts
+        .filter(a => a.caregiverId === req.user.id && !a.resolved)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return res.json({ success: true, alerts });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error retrieving caregiver alerts', error: error.message });
+  }
+};
+
+exports.resolveCaregiverAlert = async (req, res) => {
+  try {
+    if (req.user.role !== 'caregiver') {
+      return res.status(403).json({ success: false, message: 'Access denied: Caregiver role required' });
+    }
+
+    const { alertId } = req.body;
+    if (!alertId) {
+      return res.status(400).json({ success: false, message: 'alertId is required' });
+    }
+
+    const isDbConnected = mongoose.connection.readyState === 1;
+
+    if (isDbConnected) {
+      const alert = await CaregiverAlert.findById(alertId);
+      if (!alert) {
+        return res.status(404).json({ success: false, message: 'Alert not found' });
+      }
+      if (alert.caregiverId.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      alert.resolved = true;
+      await alert.save();
+      return res.json({ success: true, message: 'Alert resolved successfully' });
+    } else {
+      const alert = mockDb.caregiverAlerts.find(a => (a.id === alertId || a._id === alertId));
+      if (!alert) {
+        return res.status(404).json({ success: false, message: 'Alert not found (Mock-DB)' });
+      }
+      if (alert.caregiverId !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'Access denied (Mock-DB)' });
+      }
+      alert.resolved = true;
+      return res.json({ success: true, message: 'Alert resolved successfully (Mock-DB)' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error resolving alert', error: error.message });
   }
 };

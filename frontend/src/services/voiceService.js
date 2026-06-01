@@ -1,18 +1,14 @@
-// Web Speech API wrapper for speech recognition and synthesis
+export const speak = (text, lang = 'en', speed = 0.85) => {
+  if (!('speechSynthesis' in window)) return;
 
-// Speech Synthesis (Text-to-Speech)
-export const speak = (text, lang = 'en', rate = 0.85) => {
-  // Check if voice assistant is globally disabled in localStorage
-  if (localStorage.getItem('medicare_voice_assistant') === 'off') {
+  // Check if voice assistant is active in localStorage
+  const voiceAssistant = localStorage.getItem('medicare_voice_assistant');
+  // If explicitly disabled, don't speak
+  if (voiceAssistant === 'off') {
     return;
   }
 
-  if (!('speechSynthesis' in window)) {
-    console.warn('Speech synthesis not supported in this browser.');
-    return;
-  }
-
-  // Cancel any ongoing speaking
+  // Cancel any ongoing speech
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(text);
@@ -24,103 +20,35 @@ export const speak = (text, lang = 'en', rate = 0.85) => {
     utterance.lang = 'en-US';
   }
 
-  // Set custom voice if preferred in settings, otherwise fallback to high-quality natural voices
-  const preferredVoiceName = localStorage.getItem('medicare_voice_name');
+  // Set speed/rate
+  utterance.rate = speed;
+
+  // Retrieve saved custom voice
+  const savedVoiceName = localStorage.getItem('medicare_voice_name');
   const voices = window.speechSynthesis.getVoices();
   
-  if (preferredVoiceName) {
-    const preferredVoice = voices.find(v => v.name === preferredVoiceName);
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-  } else if (voices.length > 0) {
-    const langPrefix = lang === 'hi' ? 'hi' : 'en';
-    const langVoices = voices.filter(v => v.lang.startsWith(langPrefix));
-    
-    // Preference order for natural-sounding English/Hindi voices
-    const preferences = langPrefix === 'hi'
-      ? ['Google हिन्दी', 'Microsoft Swara', 'Microsoft Kalpana']
-      : ['Google US English', 'Google UK English Female', 'Microsoft Zira', 'Samantha', 'Microsoft Susan', 'Microsoft Hazel'];
-      
-    let selectedVoice = null;
-    for (const name of preferences) {
-      selectedVoice = langVoices.find(v => v.name.includes(name));
-      if (selectedVoice) break;
-    }
-    
+  if (savedVoiceName) {
+    const selectedVoice = voices.find(v => v.name === savedVoiceName);
     if (selectedVoice) {
       utterance.voice = selectedVoice;
     }
+  } else {
+    // Default fallback to natural/pleasant English or Hindi voice
+    if (lang === 'hi') {
+      const hiVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.lang.startsWith('hi'));
+      if (hiVoice) utterance.voice = hiVoice;
+    } else {
+      // Find a pleasant English voice
+      const pleasantVoice = voices.find(v => 
+        v.name.includes('Google US English') || 
+        v.name.includes('Samantha') || 
+        v.name.includes('Zira') ||
+        v.name.includes('Hazel') ||
+        (v.lang.startsWith('en') && v.name.includes('Natural'))
+      );
+      if (pleasantVoice) utterance.voice = pleasantVoice;
+    }
   }
-
-  // Slower rate for elderly users
-  utterance.rate = rate; 
 
   window.speechSynthesis.speak(utterance);
-};
-
-// Speech Recognition (Speech-to-Text)
-export const getSpeechRecognition = () => {
-  // Check if voice assistant is globally disabled in localStorage
-  if (localStorage.getItem('medicare_voice_assistant') === 'off') {
-    return null;
-  }
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn('Speech recognition not supported in this browser.');
-    return null;
-  }
-  
-  const recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  
-  return recognition;
-};
-
-// Standard Command Parser
-export const parseCommand = (transcript, lang = 'en') => {
-  const text = transcript.toLowerCase().trim();
-  console.log('Voice Command received:', text);
-
-  // English Commands
-  if (lang === 'en') {
-    if (text.includes('show medicine') || text.includes('view medicine') || text.includes('open medicine')) {
-      return { command: 'SHOW_MEDICINES' };
-    }
-    if (text.includes('did i take') || text.includes('have i taken') || text.includes('medicine status')) {
-      return { command: 'CHECK_STATUS' };
-    }
-    if (text.includes('call caregiver') || text.includes('sos') || text.includes('emergency') || text.includes('help me')) {
-      return { command: 'TRIGGER_SOS' };
-    }
-    if (text.includes('open chatbot') || text.includes('ask ai') || text.includes('talk to ai')) {
-      return { command: 'OPEN_CHATBOT' };
-    }
-    if (text.includes('go home') || text.includes('show dashboard') || text.includes('open dashboard')) {
-      return { command: 'SHOW_DASHBOARD' };
-    }
-  }
-
-  // Hindi Commands
-  if (lang === 'hi') {
-    if (text.includes('दवा दिखाओ') || text.includes('दवाइयां') || text.includes('दवा देखो')) {
-      return { command: 'SHOW_MEDICINES' };
-    }
-    if (text.includes('क्या मैंने दवा ली') || text.includes('दवा खा ली') || text.includes('दवा का स्टेटस')) {
-      return { command: 'CHECK_STATUS' };
-    }
-    if (text.includes('सहायता') || text.includes('मदद करो') || text.includes('इमरजेंसी') || text.includes('केयरगिवर को बुलाओ')) {
-      return { command: 'TRIGGER_SOS' };
-    }
-    if (text.includes('चैटबॉट खोलो') || text.includes('एआई से बात')) {
-      return { command: 'OPEN_CHATBOT' };
-    }
-    if (text.includes('होम पर जाओ') || text.includes('डैशबोर्ड खोलो')) {
-      return { command: 'SHOW_DASHBOARD' };
-    }
-  }
-
-  return { command: 'UNKNOWN', text };
 };

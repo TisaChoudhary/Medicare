@@ -1,8 +1,7 @@
 import React from 'react';
 import { Pill, Check, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
-import { speak } from '../services/voiceService';
 
-const MedicineCard = ({ reminder, onStatusChange, lang = 'en', voiceSpeed = 0.85 }) => {
+const MedicineCard = ({ reminder, onStatusChange, lang = 'en' }) => {
   const { _id, medicineId, time, status, takenAt, snoozeCount } = reminder;
 
   // Safety fallback if populated object is missing
@@ -52,25 +51,11 @@ const MedicineCard = ({ reminder, onStatusChange, lang = 'en', voiceSpeed = 0.85
   const handleTake = () => {
     playClickSound('success');
     onStatusChange(_id, 'taken');
-
-    const voiceMsg = {
-      en: `Excellent! You took your ${name}.`,
-      es: `¡Excelente! Tomó su ${name}.`,
-      hi: `बहुत अच्छा! आपने अपनी ${name} ले ली है।`
-    };
-    speak(voiceMsg[lang] || voiceMsg.en, lang, voiceSpeed);
   };
 
   const handleSnooze = () => {
     playClickSound('snooze');
     onStatusChange(_id, 'snoozed');
-
-    const voiceMsg = {
-      en: `Reminding you again in ten minutes.`,
-      es: `Te recordaré de nuevo en diez minutos.`,
-      hi: `दस मिनट बाद मैं आपको फिर से याद दिलाऊँगी।`
-    };
-    speak(voiceMsg[lang] || voiceMsg.en, lang, voiceSpeed);
   };
 
   const getFoodText = (rel) => {

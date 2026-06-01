@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { UserPlus, User, Mail, Key, Phone, ShieldAlert } from 'lucide-react';
 import { authAPI } from '../services/api';
 import { translations } from '../services/translations';
-import { speak } from '../services/voiceService';
 
-const Signup = ({ setSession, lang = 'en', setLang, voiceSpeed = 0.85, onNavigate }) => {
+const Signup = ({ setSession, lang = 'en', setLang, onNavigate }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,19 +40,11 @@ const Signup = ({ setSession, lang = 'en', setLang, voiceSpeed = 0.85, onNavigat
       localStorage.setItem('medicare_token', data.token);
       localStorage.setItem('medicare_user', JSON.stringify(data.user));
 
-      const welcome = {
-        en: `Welcome to MediCare AI, ${data.user.name}!`,
-        es: `¡Bienvenido a MediCare AI, ${data.user.name}!`,
-        hi: `मेडीकेयर एआई में आपका स्वागत है, ${data.user.name}!`
-      };
-      speak(welcome[lang] || welcome.en, lang, voiceSpeed);
-
       setSession({ token: data.token, user: data.user });
     } catch (err) {
       console.error(err);
       const failText = err.response?.data?.message || 'Registration failed. Please check inputs.';
       setErrorMsg(failText);
-      speak(failText, lang, voiceSpeed);
     } finally {
       setLoading(false);
     }

@@ -24,6 +24,7 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [activeAlerts, setActiveAlerts] = useState([]);
 
   // Expansion and detail logs
   const [expandedPatientId, setExpandedPatientId] = useState(null);
@@ -36,8 +37,23 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
     try {
       const data = await caregiverAPI.getOverview();
       setPatients(data.overview || []);
+      
+      const alertsData = await caregiverAPI.getAlerts();
+      if (alertsData.success) {
+        setActiveAlerts(alertsData.alerts || []);
+      }
     } catch (err) {
       console.error('Error fetching caregiver overview details:', err);
+    }
+  };
+
+  const handleResolveAlert = async (alertId) => {
+    try {
+      await caregiverAPI.resolveAlert(alertId);
+      setActiveAlerts(prev => prev.filter(a => a._id !== alertId && a.id !== alertId));
+      fetchData();
+    } catch (err) {
+      console.error('Error resolving caregiver alert:', err);
     }
   };
 
@@ -130,12 +146,56 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
         </div>
         <button
           onClick={fetchData}
-          className="p-3 bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-full hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all shadow-sm"
+          className="p-3 bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-full hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all shadow-sm shadow-emerald-500/5 cursor-pointer"
           title="Refresh statistics"
         >
           <RefreshCw className="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
         </button>
       </div>
+
+      {/* Caregiver Live Alerts Banner */}
+      {activeAlerts.length > 0 && (
+        <div className="space-y-4">
+          <div className="bg-red-500/10 border-2 border-red-500 rounded-3xl p-6 shadow-md animate-fade-in">
+            <h2 className="text-2xl font-black text-red-650 dark:text-red-400 flex items-center gap-2 uppercase tracking-tight">
+              <AlertTriangle className="w-8 h-8 animate-bounce text-red-500" />
+              <span>Critical Adherence Alerts!</span>
+            </h2>
+            <p className="text-md font-bold text-neutral-600 dark:text-neutral-350 mt-1">
+              The following patients missed their scheduled medication retry windows. Please contact them.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              {activeAlerts.map(alert => (
+                <div 
+                  key={alert._id || alert.id}
+                  className="bg-white dark:bg-[#1a1a1a] border border-red-200 dark:border-red-950/40 p-5 rounded-2xl flex justify-between items-center gap-4 shadow-sm"
+                >
+                  <div className="min-w-0">
+                    <h4 className="text-lg font-black text-neutral-900 dark:text-white flex items-center gap-1.5 truncate">
+                      <span className="text-red-500">●</span>
+                      <span>{alert.patientName}</span>
+                    </h4>
+                    <p className="text-sm font-bold text-neutral-500 dark:text-neutral-450 mt-1 truncate">
+                      Missed: <strong className="text-red-650 dark:text-red-400 font-extrabold">{alert.medicineName}</strong> ({alert.dosage})
+                    </p>
+                    <p className="text-xs text-neutral-400 font-bold mt-1 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-red-500" />
+                      <span>Scheduled: {alert.scheduledTime} on {alert.date}</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleResolveAlert(alert._id || alert.id)}
+                    className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-sm shrink-0 active:scale-95 cursor-pointer"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -284,6 +344,14 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
                             <span className="inline-flex items-center gap-1 text-xs font-black text-red-650 bg-red-100 dark:bg-red-950/40 dark:text-red-400 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                               <AlertTriangle className="w-3 h-3" />
                               <span>{pat.todayStats.missed} Missed</span>
+                            </span>
+                          )}
+
+                          {/* Active Alerts tag */}
+                          {pat.activeAlerts && pat.activeAlerts.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-xs font-black text-red-650 bg-red-500/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse ml-2">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>{pat.activeAlerts.length} Alert{pat.activeAlerts.length > 1 ? 's' : ''}</span>
                             </span>
                           )}
 

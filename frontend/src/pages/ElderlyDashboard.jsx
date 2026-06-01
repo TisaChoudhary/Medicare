@@ -12,8 +12,87 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [healthInsights, setHealthInsights] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [activeNotifications, setActiveNotifications] = useState([]);
 
   const t = translations[lang];
+
+  // Request notifications permission and update FCM token
+  useEffect(() => {
+    if ('Notification' in window) {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          reminderAPI.saveFcmToken('mock_fcm_token_patient_' + user._id)
+            .catch(err => console.error('Failed to save mock FCM token:', err));
+        }
+      });
+    }
+  }, [user._id]);
+
+  // Poll for due notifications
+  useEffect(() => {
+    const pollNotifications = async () => {
+      try {
+        const data = await reminderAPI.getNotifications();
+        if (data.success && data.notifications.length > 0) {
+          // Find which notifications are new (not already in activeNotifications)
+          const newNotifications = data.notifications.filter(
+            n => !activeNotifications.some(existing => existing._id === n._id)
+          );
+
+          if (newNotifications.length > 0) {
+            newNotifications.forEach(n => {
+              const medName = n.medicineId?.name || 'Medication';
+              const medDosage = n.medicineId?.dosage || '1 dose';
+              const title = `💊 Medicine Reminder`;
+              const body = `Time to take: ${medName} - Dosage: ${medDosage}`;
+
+              // Trigger system notification
+              if ('Notification' in window && Notification.permission === 'granted') {
+                const notification = new Notification(title, {
+                  body: body,
+                  icon: '/vite.svg',
+                  tag: n._id
+                });
+                notification.onclick = () => {
+                  window.focus();
+                };
+              }
+
+              // Speak text alert
+              const alertText = `Reminder: Time to take your medicine, ${medName}. Dosage is ${medDosage}.`;
+              speak(alertText, lang, voiceSpeed);
+            });
+
+            setActiveNotifications(data.notifications);
+          }
+        } else {
+          setActiveNotifications([]);
+        }
+      } catch (err) {
+        console.error('Error polling notifications:', err);
+      }
+    };
+
+    pollNotifications();
+    const interval = setInterval(pollNotifications, 10000); // 10s polling
+    return () => clearInterval(interval);
+  }, [activeNotifications, lang, voiceSpeed]);
+
+  const handleNotificationAction = async (logId, action) => {
+    try {
+      await reminderAPI.postAction(logId, action);
+      setActiveNotifications(prev => prev.filter(n => n._id !== logId));
+      fetchReminders();
+      
+      if (action === 'taken') {
+        speak('Medicine marked as taken.', lang, voiceSpeed);
+      } else {
+        speak('Medicine snoozed for 10 minutes.', lang, voiceSpeed);
+      }
+    } catch (err) {
+      console.error('Failed to handle notification action:', err);
+    }
+  };
 
   const slotNames = {
     en: { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' },
@@ -256,6 +335,8 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
 
   const total = reminders.length;
   const taken = reminders.filter(r => r.status === 'taken').length;
+  const missed = reminders.filter(r => r.status === 'missed').length;
+  const upcoming = reminders.filter(r => r.status === 'pending' || r.status === 'snoozed').length;
   const percent = total > 0 ? Math.round((taken / total) * 100) : 0;
 
   const strokeWidth = 8;
@@ -265,6 +346,45 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
 
   return (
     <div className="space-y-8 p-4 md:p-8 max-w-4xl mx-auto">
+      {/* Active Notification Banner alerts */}
+      {activeNotifications.length > 0 && (
+        <div className="space-y-4">
+          {activeNotifications.map(notif => (
+            <div 
+              key={notif._id}
+              className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/10 dark:to-orange-500/10 border-2 border-amber-500/50 rounded-3xl p-6 shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 animate-pulse"
+            >
+              <div className="flex items-center gap-4 text-center md:text-left">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center text-3xl shadow-sm shrink-0">
+                  💊
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-amber-800 dark:text-amber-400 uppercase tracking-tight">Medicine Reminder</h4>
+                  <p className="text-lg font-bold text-neutral-850 dark:text-neutral-250 mt-1">
+                    Time to take: <strong className="text-amber-600 dark:text-amber-300 font-extrabold">{notif.medicineId?.name}</strong> (Dosage: {notif.medicineId?.dosage})
+                  </p>
+                  <p className="text-sm font-bold text-neutral-500 dark:text-neutral-450 mt-0.5">Scheduled at: {notif.time}</p>
+                </div>
+              </div>
+              <div className="flex gap-3 w-full md:w-auto">
+                <button
+                  onClick={() => handleNotificationAction(notif._id, 'taken')}
+                  className="flex-1 md:flex-none px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-lg rounded-2xl transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Mark as Taken
+                </button>
+                <button
+                  onClick={() => handleNotificationAction(notif._id, 'snooze')}
+                  className="flex-1 md:flex-none px-6 py-4 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-lg rounded-2xl transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Snooze 10 Min
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Offline Alert Banner */}
       {isOffline && (
         <div className="flex items-center gap-3 bg-neutral-100 dark:bg-[#1f1f1f] border border-neutral-350 dark:border-neutral-700 text-neutral-800 dark:text-white p-5 rounded-2xl font-bold text-lg md:text-xl">
@@ -336,9 +456,16 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
                 <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mt-0.5">Taken</p>
               </div>
             </div>
-            <div className="pr-4">
-              <p className="text-xl font-black text-neutral-900 dark:text-white">{taken} / {total}</p>
-              <p className="text-xs font-bold text-neutral-450 uppercase tracking-wider mt-0.5">{lang === 'es' ? 'Medicamentos' : lang === 'hi' ? 'दवाइयां' : 'Medications'}</p>
+            <div className="pr-4 space-y-1">
+              <p className="text-xl font-black text-neutral-900 dark:text-white">{taken} / {total} Taken</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full font-bold">
+                  {upcoming} Pending
+                </span>
+                <span className="text-[10px] px-2 py-0.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full font-bold">
+                  {missed} Missed
+                </span>
+              </div>
             </div>
           </div>
 

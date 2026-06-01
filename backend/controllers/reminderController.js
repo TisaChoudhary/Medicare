@@ -396,3 +396,174 @@ exports.getHealthSummary = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error retrieving health summary', error: error.message });
   }
 };
+
+exports.saveFcmToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    const isDbConnected = mongoose.connection.readyState === 1;
+    if (isDbConnected) {
+      await User.findByIdAndUpdate(req.user.id, { fcmToken });
+    } else {
+      const user = mockDb.users.find(u => u.id === req.user.id);
+      if (user) user.fcmToken = fcmToken;
+    }
+    res.json({ success: true, message: 'FCM Token saved successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error saving token', error: err.message });
+  }
+};
+
+exports.getNotifications = async (req, res) => {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isDbConnected = mongoose.connection.readyState === 1;
+
+    if (isDbConnected) {
+      const logs = await ReminderLog.find({
+        userId: req.user.id,
+        date: todayStr,
+        status: 'pending',
+        notificationStatus: 'sent'
+      }).populate('medicineId');
+      
+      res.json({ success: true, notifications: logs });
+    } else {
+      const logs = mockDb.reminderLogs
+        .filter(l => 
+          l.userId === req.user.id && 
+          l.date === todayStr && 
+          l.status === 'pending' && 
+          l.notificationStatus === 'sent'
+        )
+        .map(log => {
+          const medicine = mockDb.medicines.find(m => m.id === log.medicineId);
+          return {
+            ...log,
+            medicineId: medicine || null
+          };
+        });
+      res.json({ success: true, notifications: logs });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error retrieving notifications', error: err.message });
+  }
+};
+
+exports.postReminderAction = async (req, res) => {
+  try {
+    const { logId, action } = req.body;
+    if (!['taken', 'soze', 'snooze'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'Invalid action' });
+    }
+
+    const isDbConnected = mongoose.connection.readyState === 1;
+
+    if (isDbConnected) {
+      const log = await ReminderLog.findById(logId).populate('medicineId');
+      if (!log) {
+        return res.status(404).json({ success: false, message: 'Reminder log not found' });
+      }
+
+      if (action === 'taken') {
+        const oldStatus = log.status;
+        log.status = 'taken';
+        log.takenAt = new Date();
+        log.updatedAt = new Date();
+        
+        // Decrement medicine stock if it wasn't already taken
+        if (oldStatus !== 'taken' && log.medicineId) {
+          const medicine = await Medicine.findById(log.medicineId._id);
+          if (medicine && medicine.stock > 0) {
+            medicine.stock = Math.max(0, medicine.stock - 1);
+            await medicine.save();
+          }
+        }
+        await log.save();
+      } else if (action === 'snooze') {
+        log.status = 'snoozed';
+        log.snoozeCount = (log.snoozeCount || 0) + 1;
+        log.updatedAt = new Date();
+        await log.save();
+
+        // Schedule new reminder in 10 minutes
+        const snoozeTime = new Date(Date.now() + 10 * 60 * 1000);
+        const snoozeHours = snoozeTime.getHours().toString().padStart(2, '0');
+        const snoozeMinutes = snoozeTime.getMinutes().toString().padStart(2, '0');
+        const snoozeTimeStr = `${snoozeHours}:${snoozeMinutes}`;
+        const todayStr = snoozeTime.toISOString().split('T')[0];
+
+        const newLog = new ReminderLog({
+          userId: log.userId,
+          medicineId: log.medicineId._id,
+          date: todayStr,
+          time: snoozeTimeStr,
+          status: 'pending',
+          notificationStatus: 'none',
+          retryCount: 0,
+          lastNotificationSentAt: null
+        });
+        await newLog.save();
+      }
+
+      return res.json({ success: true, reminder: log });
+    } else {
+      // --- Mock-DB Mode ---
+      const log = mockDb.reminderLogs.find(l => l.id === logId);
+      if (!log) {
+        return res.status(404).json({ success: false, message: 'Reminder log not found (Mock-DB)' });
+      }
+
+      const medicine = mockDb.medicines.find(m => m.id === log.medicineId);
+
+      if (action === 'taken') {
+        const oldStatus = log.status;
+        log.status = 'taken';
+        log.takenAt = new Date();
+        log.updatedAt = new Date();
+
+        if (oldStatus !== 'taken' && medicine) {
+          if (medicine.stock > 0) {
+            medicine.stock = Math.max(0, medicine.stock - 1);
+          }
+        }
+      } else if (action === 'snooze') {
+        log.status = 'snoozed';
+        log.snoozeCount = (log.snoozeCount || 0) + 1;
+        log.updatedAt = new Date();
+
+        // Schedule new reminder in 10 minutes
+        const snoozeTime = new Date(Date.now() + 10 * 60 * 1000);
+        const snoozeHours = snoozeTime.getHours().toString().padStart(2, '0');
+        const snoozeMinutes = snoozeTime.getMinutes().toString().padStart(2, '0');
+        const snoozeTimeStr = `${snoozeHours}:${snoozeMinutes}`;
+        const todayStr = snoozeTime.toISOString().split('T')[0];
+
+        const mockLogId = 'mock_log_' + Math.random().toString(36).substr(2, 9);
+        mockDb.reminderLogs.push({
+          id: mockLogId,
+          _id: mockLogId,
+          userId: log.userId,
+          medicineId: log.medicineId,
+          date: todayStr,
+          time: snoozeTimeStr,
+          status: 'pending',
+          notificationStatus: 'none',
+          retryCount: 0,
+          lastNotificationSentAt: null,
+          snoozeCount: 0,
+          updatedAt: new Date()
+        });
+      }
+
+      const populatedLog = {
+        ...log,
+        medicineId: medicine || null
+      };
+
+      return res.json({ success: true, reminder: populatedLog });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error triggering action', error: err.message });
+  }
+};
+

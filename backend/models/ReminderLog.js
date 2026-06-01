@@ -32,6 +32,19 @@ const ReminderLogSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  notificationStatus: {
+    type: String,
+    enum: ['sent', 'failed', 'none'],
+    default: 'none'
+  },
+  retryCount: {
+    type: Number,
+    default: 0
+  },
+  lastNotificationSentAt: {
+    type: Date,
+    default: null
+  },
   updatedAt: {
     type: Date,
     default: Date.now

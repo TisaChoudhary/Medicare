@@ -106,6 +106,18 @@ export const reminderAPI = {
     const res = await api.get('/reminders/summary', { params });
     return res.data;
   },
+  saveFcmToken: async (fcmToken) => {
+    const res = await api.post('/reminders/fcm-token', { fcmToken });
+    return res.data;
+  },
+  getNotifications: async () => {
+    const res = await api.get('/reminders/notifications');
+    return res.data;
+  },
+  postAction: async (logId, action) => {
+    const res = await api.post('/reminders/action', { logId, action });
+    return res.data;
+  },
 };
 
 export const caregiverAPI = {
@@ -123,6 +135,14 @@ export const caregiverAPI = {
   },
   getOverview: async () => {
     const res = await api.get('/caregiver/overview');
+    return res.data;
+  },
+  getAlerts: async () => {
+    const res = await api.get('/caregiver/alerts');
+    return res.data;
+  },
+  resolveAlert: async (alertId) => {
+    const res = await api.post('/caregiver/alerts/resolve', { alertId });
     return res.data;
   },
 };

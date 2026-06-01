@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Pill, Brain, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { translations } from './services/translations';
-import { speak } from './services/voiceService';
 import { reminderAPI } from './services/api';
 
 import Login from './pages/Login';
@@ -11,7 +10,6 @@ import CaregiverDashboard from './pages/CaregiverDashboard';
 import MedicineManager from './pages/MedicineManager';
 import Settings from './pages/Settings';
 import Chatbot from './components/Chatbot';
-import VoiceAssistant from './components/VoiceAssistant';
 import PrescriptionAnalyzer from './pages/PrescriptionAnalyzer';
 import { Sparkles } from 'lucide-react';
 
@@ -57,44 +55,6 @@ const App = () => {
     localStorage.removeItem('medicare_token');
     localStorage.removeItem('medicare_user');
     setSession({ token: null, user: null });
-    speak("Logged out successfully.", lang, voiceSpeed);
-  };
-
-  // Voice Command routing hook
-  const handleVoiceCommand = async (command, spokenText) => {
-    console.log('Orchestrating command:', command);
-
-    if (command === 'SHOW_MEDICINES') {
-      setCurrentPage('medicines');
-      speak("Opening medicine list.", lang, voiceSpeed);
-    } else if (command === 'SHOW_DASHBOARD') {
-      setCurrentPage('dashboard');
-      speak("Opening home dashboard.", lang, voiceSpeed);
-    } else if (command === 'OPEN_CHATBOT') {
-      setCurrentPage('chatbot');
-      speak("Opening AI chatbot assistant.", lang, voiceSpeed);
-
-    } else if (command === 'CHECK_STATUS') {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const data = await reminderAPI.getToday(todayStr);
-        const pending = data.reminders.filter(r => r.status === 'pending' || r.status === 'snoozed');
-        
-        let report = '';
-        if (pending.length === 0) {
-          report = lang === 'es' ? 'Has tomado todas tus medicinas por hoy. ¡Buen trabajo!' : lang === 'hi' ? 'आपने आज की सभी दवाइयाँ ले ली हैं। बहुत बढ़िया!' : 'You have taken all your medicines for today. Great job!';
-        } else {
-          report = lang === 'es' 
-            ? `Te quedan ${pending.length} dosis pendientes hoy. Su próxima medicina es ${pending[0].medicineId.name}.` 
-            : lang === 'hi' 
-            ? `आज आपकी ${pending.length} दवाइयां बची हैं। अगली दवा ${pending[0].medicineId.name} है।`
-            : `You have ${pending.length} pending doses remaining today. Your next scheduled medicine is ${pending[0].medicineId.name}.`;
-        }
-        speak(report, lang, voiceSpeed);
-      } catch (err) {
-        speak("Unable to check status right now.", lang, voiceSpeed);
-      }
-    }
   };
 
   // If not logged in, render authentication forms
@@ -250,14 +210,6 @@ const App = () => {
         </button>
       </nav>
 
-      {/* Voice Recognition Floating Assistant (Elderly specific overlay) */}
-      {userRole === 'elderly' && session.user?.voiceAssistantActive !== false && (
-        <VoiceAssistant
-          lang={lang}
-          onCommand={handleVoiceCommand}
-          voiceSpeed={voiceSpeed}
-        />
-      )}
     </div>
   );
 };

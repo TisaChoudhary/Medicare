@@ -9,6 +9,7 @@ let rawData = {
   medicines: [],
   reminderLogs: [],
   emergencyAlerts: [],
+  caregiverAlerts: [],
   medicalReports: []
 };
 
@@ -21,6 +22,7 @@ if (fs.existsSync(DB_FILE)) {
       medicines: Array.isArray(loaded.medicines) ? loaded.medicines : [],
       reminderLogs: Array.isArray(loaded.reminderLogs) ? loaded.reminderLogs : [],
       emergencyAlerts: Array.isArray(loaded.emergencyAlerts) ? loaded.emergencyAlerts : [],
+      caregiverAlerts: Array.isArray(loaded.caregiverAlerts) ? loaded.caregiverAlerts : [],
       medicalReports: Array.isArray(loaded.medicalReports) ? loaded.medicalReports : []
     };
     console.log('Loaded mock DB data from persistent file.');
