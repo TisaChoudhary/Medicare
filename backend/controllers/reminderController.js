@@ -567,3 +567,14 @@ exports.postReminderAction = async (req, res) => {
   }
 };
 
+exports.triggerSchedulerCheck = async (req, res) => {
+  try {
+    const { checkReminders } = require('../services/scheduler');
+    await checkReminders();
+    res.json({ success: true, message: 'Background reminder checks executed successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to run scheduler check', error: err.message });
+  }
+};
+
+

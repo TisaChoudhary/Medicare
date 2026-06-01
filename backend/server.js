@@ -49,3 +49,6 @@ mongoose
     console.warn('\n⚠️  WARNING: Failed to connect to MongoDB:', err.message);
     console.warn('👉 The Express server is still running on port ' + PORT + ', but database actions will fail or buffer until you start your MongoDB service (e.g. running "mongod" locally on port 27017).\n');
   });
+
+module.exports = app;
+

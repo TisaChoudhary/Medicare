@@ -7,11 +7,15 @@ const {
   getHealthSummary,
   saveFcmToken,
   getNotifications,
-  postReminderAction
+  postReminderAction,
+  triggerSchedulerCheck
 } = require('../controllers/reminderController');
 const { protect } = require('../middleware/authMiddleware');
 
+router.get('/trigger-check', triggerSchedulerCheck);
+
 router.use(protect); // protect all reminder routes
+
 
 router.get('/today', getTodayReminders);
 router.put('/status/:logId', updateReminderStatus);
