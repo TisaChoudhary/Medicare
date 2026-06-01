@@ -24,13 +24,32 @@ export const speak = (text, lang = 'en', rate = 0.85) => {
     utterance.lang = 'en-US';
   }
 
-  // Set custom voice if preferred in settings
+  // Set custom voice if preferred in settings, otherwise fallback to high-quality natural voices
   const preferredVoiceName = localStorage.getItem('medicare_voice_name');
+  const voices = window.speechSynthesis.getVoices();
+  
   if (preferredVoiceName) {
-    const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find(v => v.name === preferredVoiceName);
     if (preferredVoice) {
       utterance.voice = preferredVoice;
+    }
+  } else if (voices.length > 0) {
+    const langPrefix = lang === 'hi' ? 'hi' : 'en';
+    const langVoices = voices.filter(v => v.lang.startsWith(langPrefix));
+    
+    // Preference order for natural-sounding English/Hindi voices
+    const preferences = langPrefix === 'hi'
+      ? ['Google हिन्दी', 'Microsoft Swara', 'Microsoft Kalpana']
+      : ['Google US English', 'Google UK English Female', 'Microsoft Zira', 'Samantha', 'Microsoft Susan', 'Microsoft Hazel'];
+      
+    let selectedVoice = null;
+    for (const name of preferences) {
+      selectedVoice = langVoices.find(v => v.name.includes(name));
+      if (selectedVoice) break;
+    }
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
     }
   }
 
