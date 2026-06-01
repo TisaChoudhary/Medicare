@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Volume2, CloudOff, Wifi, Info, Brain } from 'lucide-react';
+import { ShieldAlert, Volume2, CloudOff, Wifi, Info, Brain, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 import { reminderAPI } from '../services/api';
 import { speak } from '../services/voiceService';
 import { offlineService } from '../services/offlineService';
@@ -14,6 +14,12 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
   const [syncing, setSyncing] = useState(false);
 
   const t = translations[lang];
+
+  const slotNames = {
+    en: { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' },
+    es: { morning: 'Mañana', afternoon: 'Tarde', evening: 'Tarde/Noche', night: 'Noche' },
+    hi: { morning: 'सुबह', afternoon: 'दोपहर', evening: 'शाम', night: 'रात' }
+  };
 
   // Fetch reminders logic with offline fallback
   const fetchReminders = async () => {
@@ -179,11 +185,89 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
     }
   };
 
+  const triggerAudioBriefing = () => {
+    const total = reminders.length;
+    const taken = reminders.filter(r => r.status === 'taken').length;
+    const pending = reminders.filter(r => r.status === 'pending' || r.status === 'snoozed');
+
+    let brief = '';
+    if (lang === 'es') {
+      if (total === 0) {
+        brief = "No tienes medicamentos programados para hoy.";
+      } else {
+        brief = `Has tomado ${taken} de un total de ${total} medicamentos hoy. `;
+        if (pending.length === 0) {
+          brief += "¡Buen trabajo! Has terminado por hoy.";
+        } else {
+          brief += `Te quedan ${pending.length} dosis pendientes. Tu próxima dosis es ${pending[0].medicineId.name} a las ${pending[0].time}.`;
+        }
+      }
+    } else if (lang === 'hi') {
+      if (total === 0) {
+        brief = "आज आपकी कोई दवा निर्धारित नहीं है।";
+      } else {
+        brief = `आपने आज ${total} में से ${taken} दवाइयां ले ली हैं। `;
+        if (pending.length === 0) {
+          brief += "बहुत बढ़िया! आज का काम पूरा हो गया।";
+        } else {
+          brief += `आपकी ${pending.length} खुराकें बची हैं। अगली दवा ${pending[0].medicineId.name} है, जिसे ${pending[0].time} बजे लेना है।`;
+        }
+      }
+    } else {
+      if (total === 0) {
+        brief = "You have no medications scheduled for today.";
+      } else {
+        brief = `You have taken ${taken} out of ${total} medications today. `;
+        if (pending.length === 0) {
+          brief += "Excellent job! You are all done for today.";
+        } else {
+          brief += `You have ${pending.length} pending doses remaining. Your next scheduled dose is ${pending[0].medicineId.name} at ${pending[0].time}.`;
+        }
+      }
+    }
+
+    speak(brief, lang, voiceSpeed);
+  };
+
+  // Group reminders by slot
+  const morningReminders = reminders.filter(r => {
+    const hour = parseInt(r.time.split(':')[0]);
+    return hour >= 5 && hour < 12;
+  });
+  const afternoonReminders = reminders.filter(r => {
+    const hour = parseInt(r.time.split(':')[0]);
+    return hour >= 12 && hour < 17;
+  });
+  const eveningReminders = reminders.filter(r => {
+    const hour = parseInt(r.time.split(':')[0]);
+    return hour >= 17 && hour < 21;
+  });
+  const nightReminders = reminders.filter(r => {
+    const hour = parseInt(r.time.split(':')[0]);
+    return hour >= 21 || hour < 5;
+  });
+
+  const timeSlots = [
+    { id: 'morning', title: slotNames[lang]?.morning || 'Morning', icon: <Sunrise className="w-5 h-5 text-amber-500" />, items: morningReminders },
+    { id: 'afternoon', title: slotNames[lang]?.afternoon || 'Afternoon', icon: <Sun className="w-5 h-5 text-orange-500" />, items: afternoonReminders },
+    { id: 'evening', title: slotNames[lang]?.evening || 'Evening', icon: <Sunset className="w-5 h-5 text-indigo-500" />, items: eveningReminders },
+    { id: 'night', title: slotNames[lang]?.night || 'Night', icon: <Moon className="w-5 h-5 text-blue-500" />, items: nightReminders },
+  ];
+
+  const total = reminders.length;
+  const taken = reminders.filter(r => r.status === 'taken').length;
+  const percent = total > 0 ? Math.round((taken / total) * 100) : 0;
+
+  const strokeWidth = 8;
+  const radius = 38;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percent / 100) * circumference;
+
   return (
     <div className="space-y-8 p-4 md:p-8 max-w-4xl mx-auto">
       {/* Offline Alert Banner */}
       {isOffline && (
-        <div className="flex items-center gap-3 bg-neutral-100 dark:bg-[#1f1f1f] border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-white p-5 rounded-2xl font-bold text-lg md:text-xl">
+        <div className="flex items-center gap-3 bg-neutral-100 dark:bg-[#1f1f1f] border border-neutral-350 dark:border-neutral-700 text-neutral-800 dark:text-white p-5 rounded-2xl font-bold text-lg md:text-xl">
           <CloudOff className="w-8 h-8 flex-shrink-0 text-red-500" />
           <span>{lang === 'es' ? 'Estás desconectado. Los cambios se guardarán localmente.' : lang === 'hi' ? 'आप ऑफलाइन हैं। जानकारी सुरक्षित रूप से सेव हो रही है।' : 'Offline mode. Changes are saved locally.'}</span>
         </div>
@@ -197,53 +281,125 @@ const ElderlyDashboard = ({ user, lang = 'en', voiceSpeed = 0.85 }) => {
         </div>
       )}
 
-      {/* Top Header Card with Timer */}
-      <div className="bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-black">{lang === 'es' ? '¡Hola!' : lang === 'hi' ? 'नमस्ते!' : 'Welcome back,'} {user.name}</h2>
-          <p className="text-lg font-bold text-[#16a34a] dark:text-[#16a34a] mt-1 flex items-center gap-1.5">
-            <Volume2 className="w-5 h-5 animate-pulse text-[#16a34a]" />
-            <span>{t.voiceCommandInfo}</span>
-          </p>
-        </div>
+      {/* Top Header Card with Circular Progress and Timer */}
+      <div className="bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white rounded-3xl p-6 md:p-8 border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col md:flex-row justify-between items-stretch gap-6 relative overflow-hidden">
+        {/* Decorative subtle background gradient */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full filter blur-3xl pointer-events-none -mr-20 -mt-20" />
         
-        {nextTimer && (
-          <div className="bg-neutral-50 dark:bg-[#121212] px-6 py-4 rounded-2xl border border-neutral-200 dark:border-neutral-800">
-            <p className="text-sm font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">{t.nextDose}</p>
-            <p className="text-xl md:text-2xl font-black text-[#16a34a]">{nextTimer}</p>
+        <div className="flex-1 flex flex-col justify-between space-y-6 z-10">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight">{lang === 'es' ? '¡Hola!' : lang === 'hi' ? 'नमस्ते!' : 'Welcome back,'} <span className="text-[#16a34a]">{user.name}</span></h2>
+            <p className="text-md font-bold text-neutral-500 dark:text-neutral-450 mt-1.5 flex items-center gap-1.5">
+              <Volume2 className="w-5 h-5 text-[#16a34a] shrink-0" />
+              <span>{t.voiceCommandInfo}</span>
+            </p>
           </div>
-        )}
+
+          <button
+            onClick={triggerAudioBriefing}
+            className="self-start flex items-center gap-2 px-5 py-3 bg-[#16a34a]/10 hover:bg-[#16a34a]/20 text-[#16a34a] font-extrabold rounded-2xl transition-all shadow-sm group border border-emerald-500/20"
+          >
+            <Volume2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span>{lang === 'es' ? 'Escuchar informe diario' : lang === 'hi' ? 'दैनिक विवरण सुनें' : 'Listen to Daily Briefing'}</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-6 z-10">
+          {/* Radial progress ring */}
+          <div className="flex items-center gap-4 bg-neutral-50 dark:bg-[#121212] p-4 rounded-3xl border border-neutral-100 dark:border-neutral-850">
+            <div className="relative flex items-center justify-center w-24 h-24">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="48"
+                  cy="48"
+                  r={radius}
+                  className="text-neutral-200 dark:text-neutral-800"
+                  strokeWidth={strokeWidth}
+                  stroke="currentColor"
+                  fill="transparent"
+                />
+                <circle
+                  cx="48"
+                  cy="48"
+                  r={radius}
+                  className="text-[#16a34a] transition-all duration-500 ease-out"
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                  fill="transparent"
+                />
+              </svg>
+              <div className="absolute text-center">
+                <span className="text-xl font-black text-neutral-900 dark:text-white">{percent}%</span>
+                <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mt-0.5">Taken</p>
+              </div>
+            </div>
+            <div className="pr-4">
+              <p className="text-xl font-black text-neutral-900 dark:text-white">{taken} / {total}</p>
+              <p className="text-xs font-bold text-neutral-450 uppercase tracking-wider mt-0.5">{lang === 'es' ? 'Medicamentos' : lang === 'hi' ? 'दवाइयां' : 'Medications'}</p>
+            </div>
+          </div>
+
+          {nextTimer && (
+            <div className="bg-neutral-50 dark:bg-[#121212] px-6 py-5 rounded-3xl border border-neutral-150 dark:border-neutral-850 self-stretch flex flex-col justify-center min-w-[150px]">
+              <p className="text-xs font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{t.nextDose}</p>
+              <p className="text-lg md:text-xl font-black text-[#16a34a] mt-1">{nextTimer}</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Daily Medicines list */}
-      <div className="space-y-4">
+      {/* Daily Medicines timeline */}
+      <div className="space-y-6">
         <h3 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
           <span>{t.todayMeds}</span>
-          <span className="text-sm bg-emerald-500/10 dark:bg-emerald-500/20 text-[#16a34a] px-3 py-1 rounded-full font-bold">
-            {reminders.filter(r => r.status === 'taken').length} / {reminders.length}
-          </span>
         </h3>
 
         {reminders.length === 0 ? (
-          <div className="border border-dashed border-neutral-300 dark:border-neutral-700 rounded-3xl p-10 text-center font-bold text-xl text-neutral-500 dark:text-neutral-400">
+          <div className="border border-dashed border-neutral-350 dark:border-neutral-700 bg-white dark:bg-[#1f1f1f] rounded-3xl p-12 text-center font-bold text-xl text-neutral-500 dark:text-neutral-400">
             <Info className="w-12 h-12 mx-auto mb-2 text-neutral-400" />
             <p>{t.noMeds}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {reminders.map((rem) => (
-              <MedicineCard
-                key={rem._id}
-                reminder={rem}
-                onStatusChange={handleStatusChange}
-                lang={lang}
-                voiceSpeed={voiceSpeed}
-              />
-            ))}
+          <div className="space-y-8 relative before:absolute before:inset-y-2 before:left-8 before:w-0.5 before:bg-neutral-200 dark:before:bg-neutral-800">
+            {timeSlots.map(slot => {
+              if (slot.items.length === 0) return null; // Only show active slots
+
+              return (
+                <div key={slot.id} className="relative pl-16 space-y-4">
+                  {/* Timeline node icon */}
+                  <div className="absolute left-3.5 top-0 w-9 h-9 rounded-full bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center shadow-sm z-10">
+                    {slot.icon}
+                  </div>
+
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-black text-neutral-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span>{slot.title}</span>
+                      <span className="text-xs bg-emerald-500/10 dark:bg-emerald-500/20 text-[#16a34a] px-2 py-0.5 rounded-full font-bold">
+                        {slot.items.filter(r => r.status === 'taken').length} / {slot.items.length}
+                      </span>
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {slot.items.map((rem) => (
+                      <MedicineCard
+                        key={rem._id}
+                        reminder={rem}
+                        onStatusChange={handleStatusChange}
+                        lang={lang}
+                        voiceSpeed={voiceSpeed}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
     </div>
   );
 };
