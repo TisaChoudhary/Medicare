@@ -21,6 +21,8 @@ const MedicineManager = ({ user, lang = 'en' }) => {
   const [stockAlertThreshold, setStockAlertThreshold] = useState(5);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
   const [prescriptionFileName, setPrescriptionFileName] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const t = translations[lang];
 
@@ -46,9 +48,10 @@ const MedicineManager = ({ user, lang = 'en' }) => {
     if (user.role === 'caregiver') {
       try {
         const data = await caregiverAPI.getPatients();
-        setPatients(data.patients);
-        if (data.patients.length > 0) {
-          setSelectedPatientId(data.patients[0]._id);
+        const patientList = data.patients || [];
+        setPatients(patientList);
+        if (patientList.length > 0) {
+          setSelectedPatientId(patientList[0]._id || patientList[0].id);
         }
       } catch (err) {
         console.error(err);
@@ -59,8 +62,12 @@ const MedicineManager = ({ user, lang = 'en' }) => {
   const fetchMedicines = async () => {
     try {
       const patientId = user.role === 'caregiver' ? selectedPatientId : null;
+      if (user.role === 'caregiver' && !patientId) {
+        setMedicines([]);
+        return;
+      }
       const data = await medicineAPI.getAll(patientId);
-      setMedicines(data.medicines);
+      setMedicines(data.medicines || []);
     } catch (err) {
       console.error(err);
     }
@@ -100,11 +107,16 @@ const MedicineManager = ({ user, lang = 'en' }) => {
     setPrescriptionFileName('');
     setIsEditing(false);
     setEditId(null);
+    setErrorMsg('');
+    setSuccessMsg('');
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     if (!name || !dosage || timings.length === 0) return;
+
+    setErrorMsg('');
+    setSuccessMsg('');
 
     const payload = {
       name,
@@ -122,13 +134,16 @@ const MedicineManager = ({ user, lang = 'en' }) => {
     try {
       if (isEditing) {
         await medicineAPI.update(editId, payload);
+        setSuccessMsg(lang === 'es' ? 'Medicamento actualizado con éxito.' : lang === 'hi' ? 'दवा सफलतापूर्वक अपडेट की गई।' : 'Medicine updated successfully.');
       } else {
         await medicineAPI.create(payload);
+        setSuccessMsg(lang === 'es' ? 'Medicamento creado con éxito.' : lang === 'hi' ? 'दवा सफलतापूर्वक जोड़ी गई।' : 'Medicine created successfully.');
       }
       resetForm();
       fetchMedicines();
     } catch (err) {
       console.error(err);
+      setErrorMsg(err.response?.data?.message || 'Failed to save medicine.');
     }
   };
 
@@ -144,6 +159,8 @@ const MedicineManager = ({ user, lang = 'en' }) => {
     setStockAlertThreshold(med.stockAlertThreshold);
     setPrescriptionFile(med.prescriptionFile || null);
     setPrescriptionFileName(med.prescriptionFileName || '');
+    setErrorMsg('');
+    setSuccessMsg('');
   };
 
   const handleDelete = async (id) => {
@@ -177,7 +194,7 @@ const MedicineManager = ({ user, lang = 'en' }) => {
             className="p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-[#121212] text-neutral-900 dark:text-white font-bold text-lg md:w-64 focus:outline-none"
           >
             {patients.map(p => (
-              <option key={p.patient.id} value={p.patient.id}>{p.patient.name}</option>
+              <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
             ))}
           </select>
         </div>
@@ -189,6 +206,23 @@ const MedicineManager = ({ user, lang = 'en' }) => {
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white mb-6">
             {isEditing ? t.editMed : t.addMed}
           </h2>
+
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500 text-red-655 dark:text-red-400 rounded-xl font-bold text-sm">
+              {errorMsg}
+            </div>
+          )}
+          {successMsg && (
+            <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500 text-[#16a34a] rounded-xl font-bold text-sm">
+              {successMsg}
+            </div>
+          )}
+
+          {user.role === 'caregiver' && patients.length === 0 && (
+            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-2xl font-bold text-sm">
+              You must link at least one patient on the dashboard before you can manage their medications.
+            </div>
+          )}
 
           <form onSubmit={handleSave} className="space-y-6">
             <div>
@@ -352,7 +386,8 @@ const MedicineManager = ({ user, lang = 'en' }) => {
               )}
               <button
                 type="submit"
-                className="flex-1 btn-elderly py-4 bg-[#16a34a] hover:bg-[#15803d] text-white text-lg rounded-2xl transition-all flex items-center justify-center gap-2 border border-transparent"
+                disabled={user.role === 'caregiver' && !selectedPatientId}
+                className="flex-1 btn-elderly py-4 bg-[#16a34a] hover:bg-[#15803d] text-white text-lg rounded-2xl transition-all flex items-center justify-center gap-2 border border-transparent disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
                 <span>{t.save}</span>
