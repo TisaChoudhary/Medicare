@@ -32,6 +32,13 @@ const UserSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  emergencyContacts: {
+    type: [{
+      name: { type: String, trim: true },
+      phone: { type: String, trim: true }
+    }],
+    default: []
+  },
   emergencyContactName: {
     type: String,
     trim: true

@@ -321,12 +321,25 @@ const CaregiverDashboard = ({ lang = 'en' }) => {
                         <p className="text-sm font-bold text-neutral-450 truncate">{pat.patient.email}</p>
                         
                         {/* Emergency Quick-Info */}
-                        {(pat.patient.emergencyContactName || pat.patient.emergencyContactPhone) && (
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-450 mt-1">
-                            <Phone className="w-3.5 h-3.5 text-[#16a34a]" />
-                            <span>
-                              Emergency contact: <strong>{pat.patient.emergencyContactName} ({pat.patient.emergencyContactPhone})</strong>
-                            </span>
+                        {((pat.patient.emergencyContacts && pat.patient.emergencyContacts.length > 0) || pat.patient.emergencyContactName || pat.patient.emergencyContactPhone) && (
+                          <div className="space-y-1 mt-1">
+                            {Array.isArray(pat.patient.emergencyContacts) && pat.patient.emergencyContacts.length > 0 ? (
+                              pat.patient.emergencyContacts.map((contact, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs font-semibold text-neutral-450">
+                                  <Phone className="w-3.5 h-3.5 text-[#16a34a]" />
+                                  <span>
+                                    {lang === 'hi' ? `आपातकालीन संपर्क ${idx + 1}` : `Emergency contact ${idx + 1}`}: <strong>{contact.name} ({contact.phone})</strong>
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-450">
+                                <Phone className="w-3.5 h-3.5 text-[#16a34a]" />
+                                <span>
+                                  {lang === 'hi' ? 'आपातकालीन संपर्क' : 'Emergency contact'}: <strong>{pat.patient.emergencyContactName} ({pat.patient.emergencyContactPhone})</strong>
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

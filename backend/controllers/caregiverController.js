@@ -168,7 +168,8 @@ exports.getPatientsOverview = async (req, res) => {
             email: patient.email,
             phone: patient.phone,
             emergencyContactName: patient.emergencyContactName,
-            emergencyContactPhone: patient.emergencyContactPhone
+            emergencyContactPhone: patient.emergencyContactPhone,
+            emergencyContacts: patient.emergencyContacts || []
           },
           todayStats: { total, taken, missed, pending },
           activeSOS: false,
@@ -199,7 +200,8 @@ exports.getPatientsOverview = async (req, res) => {
             email: patient.email,
             phone: patient.phone,
             emergencyContactName: patient.emergencyContactName,
-            emergencyContactPhone: patient.emergencyContactPhone
+            emergencyContactPhone: patient.emergencyContactPhone,
+            emergencyContacts: patient.emergencyContacts || []
           },
           todayStats: { total, taken, missed, pending },
           activeSOS: false,

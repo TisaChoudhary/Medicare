@@ -34,6 +34,7 @@ const protect = async (req, res, next) => {
             caregiverId: user.caregiverId,
             emergencyContactName: user.emergencyContactName,
             emergencyContactPhone: user.emergencyContactPhone,
+            emergencyContacts: user.emergencyContacts || [],
             language: user.language,
             theme: user.theme
           };

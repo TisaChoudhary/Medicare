@@ -7,8 +7,15 @@ import { speak } from '../services/voiceService';
 const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMode, voiceSpeed, setVoiceSpeed }) => {
   const [phone, setPhone] = useState(user.phone || '');
   const [caregiverEmail, setCaregiverEmail] = useState(user.caregiverId?.email || '');
-  const [emergencyContactName, setEmergencyContactName] = useState(user.emergencyContactName || '');
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState(user.emergencyContactPhone || '');
+  const [emergencyContacts, setEmergencyContacts] = useState(() => {
+    if (Array.isArray(user.emergencyContacts) && user.emergencyContacts.length > 0) {
+      return user.emergencyContacts.map(c => ({ name: c.name || '', phone: c.phone || '' }));
+    }
+    if (user.emergencyContactName || user.emergencyContactPhone) {
+      return [{ name: user.emergencyContactName || '', phone: user.emergencyContactPhone || '' }];
+    }
+    return [{ name: '', phone: '' }];
+  });
   const [voiceAssistantActive, setVoiceAssistantActive] = useState(user.voiceAssistantActive !== false);
   
   const [voices, setVoices] = useState([]);
@@ -39,13 +46,13 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
     setSuccessMsg('');
 
     try {
+      const filteredContacts = emergencyContacts.filter(c => c.name.trim() !== '' || c.phone.trim() !== '');
       const data = await authAPI.updatePreferences({
         language: lang,
         theme: darkMode ? 'dark' : 'light',
         phone,
         caregiverEmail: user.role === 'elderly' ? caregiverEmail : undefined,
-        emergencyContactName: user.role === 'elderly' ? emergencyContactName : undefined,
-        emergencyContactPhone: user.role === 'elderly' ? emergencyContactPhone : undefined,
+        emergencyContacts: user.role === 'elderly' ? filteredContacts : undefined,
         voiceAssistantActive
       });
 
@@ -56,6 +63,7 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
         caregiverId: data.user.caregiverId,
         emergencyContactName: data.user.emergencyContactName,
         emergencyContactPhone: data.user.emergencyContactPhone,
+        emergencyContacts: data.user.emergencyContacts || [],
         language: data.user.language,
         theme: data.user.theme,
         voiceAssistantActive: data.user.voiceAssistantActive
@@ -244,59 +252,77 @@ const Settings = ({ user, setSession, lang = 'en', setLang, darkMode, setDarkMod
         )}
 
         {/* Emergency Contacts Widget */}
-        <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-4">
-          <h2 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
-            <UserCheck className="w-6 h-6 text-[#16a34a]" />
-            <span>{lang === 'hi' ? 'संपर्क और कनेक्शन' : 'Emergency Contacts & Connections'}</span>
-          </h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-md font-bold text-neutral-700 dark:text-neutral-300 mb-1">{t.phone}</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl font-bold bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-500"
-              />
+        {user.role === 'elderly' && (
+          <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-neutral-105 dark:border-neutral-850 pb-3">
+              <h2 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                <UserCheck className="w-6 h-6 text-[#16a34a]" />
+                <span>{lang === 'hi' ? 'आपातकालीन संपर्क' : 'Emergency Contacts'}</span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', phone: '' }])}
+                className="px-4 py-2 bg-[#16a34a]/10 hover:bg-[#16a34a]/20 text-[#16a34a] font-extrabold text-sm rounded-xl transition-all border border-emerald-500/20 cursor-pointer"
+              >
+                {lang === 'hi' ? '+ नया संपर्क जोड़ें' : '+ Add Contact'}
+              </button>
             </div>
 
-            {user.role === 'elderly' && (
-              <div className="space-y-4 border-t border-neutral-200 dark:border-neutral-800 pt-4">
-                <div>
-                  <label className="block text-md font-bold text-neutral-700 dark:text-neutral-300 mb-1">{t.caregiverEmail}</label>
-                  <input
-                    type="email"
-                    value={caregiverEmail}
-                    onChange={(e) => setCaregiverEmail(e.target.value)}
-                    className="w-full p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl font-bold bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-500"
-                  />
-                </div>
+            <div className="space-y-6">
+              {emergencyContacts.map((contact, index) => (
+                <div key={index} className="relative p-5 border border-neutral-150 dark:border-neutral-850 rounded-2xl bg-neutral-50/50 dark:bg-[#181818]/30 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-black text-neutral-450 uppercase tracking-widest">
+                      {lang === 'hi' ? `संपर्क ${index + 1}` : `Contact ${index + 1}`}
+                    </span>
+                    {emergencyContacts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index))}
+                        className="text-red-500 hover:text-red-700 font-extrabold text-sm cursor-pointer"
+                      >
+                        {lang === 'hi' ? 'हटाएं' : 'Remove'}
+                      </button>
+                    )}
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-md font-bold text-neutral-700 dark:text-neutral-300 mb-1">{t.emergencyContactName}</label>
-                    <input
-                      type="text"
-                      value={emergencyContactName}
-                      onChange={(e) => setEmergencyContactName(e.target.value)}
-                      className="w-full p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl font-bold bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-md font-bold text-neutral-700 dark:text-neutral-300 mb-1">{t.emergencyContactPhone}</label>
-                    <input
-                      type="tel"
-                      value={emergencyContactPhone}
-                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
-                      className="w-full p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl font-bold bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-500"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-md font-bold text-neutral-700 dark:text-neutral-300 mb-1">{t.emergencyContactName}</label>
+                      <input
+                        type="text"
+                        value={contact.name}
+                        onChange={(e) => {
+                          const updated = [...emergencyContacts];
+                          updated[index].name = e.target.value;
+                          setEmergencyContacts(updated);
+                        }}
+                        className="w-full p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl font-bold bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white focus:outline-none focus:border-[#16a34a]"
+                        placeholder={lang === 'hi' ? 'नाम लिखें' : 'Enter name'}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-md font-bold text-neutral-700 dark:text-neutral-300 mb-1">{t.emergencyContactPhone}</label>
+                      <input
+                        type="tel"
+                        value={contact.phone}
+                        onChange={(e) => {
+                          const updated = [...emergencyContacts];
+                          updated[index].phone = e.target.value;
+                          setEmergencyContacts(updated);
+                        }}
+                        className="w-full p-3 border border-neutral-300 dark:border-neutral-700 rounded-xl font-bold bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white focus:outline-none focus:border-[#16a34a]"
+                        placeholder={lang === 'hi' ? 'फ़ोन नंबर लिखें' : 'Enter phone number'}
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Submit */}
         <button

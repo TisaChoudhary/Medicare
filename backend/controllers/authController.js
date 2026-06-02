@@ -13,7 +13,7 @@ const generateToken = (userId) => {
 
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, role, phone, caregiverEmail, emergencyContactName, emergencyContactPhone } = req.body;
+    const { name, email, password, role, phone, caregiverEmail, emergencyContactName, emergencyContactPhone, emergencyContacts } = req.body;
 
     // Check if MongoDB is connected (1 = connected)
     const isDbConnected = mongoose.connection.readyState === 1;
@@ -36,6 +36,10 @@ exports.signup = async (req, res) => {
         }
       }
 
+      const contactsList = Array.isArray(emergencyContacts)
+        ? emergencyContacts
+        : (emergencyContactName && emergencyContactPhone ? [{ name: emergencyContactName, phone: emergencyContactPhone }] : []);
+
       user = new User({
         name,
         email,
@@ -43,8 +47,9 @@ exports.signup = async (req, res) => {
         role: role || 'elderly',
         phone,
         caregiverId,
-        emergencyContactName,
-        emergencyContactPhone,
+        emergencyContactName: emergencyContactName || (contactsList[0]?.name || ''),
+        emergencyContactPhone: emergencyContactPhone || (contactsList[0]?.phone || ''),
+        emergencyContacts: contactsList,
         voiceAssistantActive: true
       });
 
@@ -63,6 +68,7 @@ exports.signup = async (req, res) => {
           caregiverId: user.caregiverId,
           emergencyContactName: user.emergencyContactName,
           emergencyContactPhone: user.emergencyContactPhone,
+          emergencyContacts: user.emergencyContacts || [],
           language: user.language,
           theme: user.theme,
           voiceAssistantActive: user.voiceAssistantActive
@@ -89,6 +95,10 @@ exports.signup = async (req, res) => {
         }
       }
 
+      const contactsList = Array.isArray(emergencyContacts)
+        ? emergencyContacts
+        : (emergencyContactName && emergencyContactPhone ? [{ name: emergencyContactName, phone: emergencyContactPhone }] : []);
+
       const mockUserId = 'mock_user_' + Math.random().toString(36).substr(2, 9);
       const newUser = {
         id: mockUserId,
@@ -99,8 +109,9 @@ exports.signup = async (req, res) => {
         role: role || 'elderly',
         phone,
         caregiverId,
-        emergencyContactName,
-        emergencyContactPhone,
+        emergencyContactName: emergencyContactName || (contactsList[0]?.name || ''),
+        emergencyContactPhone: emergencyContactPhone || (contactsList[0]?.phone || ''),
+        emergencyContacts: contactsList,
         language: 'en',
         theme: 'light',
         voiceAssistantActive: true,
@@ -122,6 +133,7 @@ exports.signup = async (req, res) => {
           caregiverId: newUser.caregiverId,
           emergencyContactName: newUser.emergencyContactName,
           emergencyContactPhone: newUser.emergencyContactPhone,
+          emergencyContacts: newUser.emergencyContacts || [],
           language: newUser.language,
           theme: newUser.theme,
           voiceAssistantActive: newUser.voiceAssistantActive
@@ -163,6 +175,7 @@ exports.login = async (req, res) => {
           caregiverId: user.caregiverId,
           emergencyContactName: user.emergencyContactName,
           emergencyContactPhone: user.emergencyContactPhone,
+          emergencyContacts: user.emergencyContacts || [],
           language: user.language,
           theme: user.theme,
           voiceAssistantActive: user.voiceAssistantActive
@@ -195,6 +208,7 @@ exports.login = async (req, res) => {
           caregiverId: user.caregiverId,
           emergencyContactName: user.emergencyContactName,
           emergencyContactPhone: user.emergencyContactPhone,
+          emergencyContacts: user.emergencyContacts || [],
           language: user.language,
           theme: user.theme,
           voiceAssistantActive: user.voiceAssistantActive === undefined ? true : user.voiceAssistantActive
@@ -233,7 +247,7 @@ exports.getMe = async (req, res) => {
 
 exports.updatePreferences = async (req, res) => {
   try {
-    const { language, theme, phone, emergencyContactName, emergencyContactPhone, caregiverEmail, voiceAssistantActive } = req.body;
+    const { language, theme, phone, emergencyContactName, emergencyContactPhone, caregiverEmail, voiceAssistantActive, emergencyContacts } = req.body;
     const isDbConnected = mongoose.connection.readyState === 1;
 
     if (isDbConnected) {
@@ -248,6 +262,11 @@ exports.updatePreferences = async (req, res) => {
       if (emergencyContactName) user.emergencyContactName = emergencyContactName;
       if (emergencyContactPhone) user.emergencyContactPhone = emergencyContactPhone;
       if (voiceAssistantActive !== undefined) user.voiceAssistantActive = voiceAssistantActive;
+      if (Array.isArray(emergencyContacts)) {
+        user.emergencyContacts = emergencyContacts;
+        user.emergencyContactName = emergencyContacts[0]?.name || '';
+        user.emergencyContactPhone = emergencyContacts[0]?.phone || '';
+      }
 
       if (user.role === 'elderly' && caregiverEmail) {
         const caregiver = await User.findOne({ email: caregiverEmail, role: 'caregiver' });
@@ -271,6 +290,7 @@ exports.updatePreferences = async (req, res) => {
           caregiverId: user.caregiverId,
           emergencyContactName: user.emergencyContactName,
           emergencyContactPhone: user.emergencyContactPhone,
+          emergencyContacts: user.emergencyContacts || [],
           language: user.language,
           theme: user.theme,
           voiceAssistantActive: user.voiceAssistantActive
@@ -289,6 +309,11 @@ exports.updatePreferences = async (req, res) => {
       if (emergencyContactName) user.emergencyContactName = emergencyContactName;
       if (emergencyContactPhone) user.emergencyContactPhone = emergencyContactPhone;
       if (voiceAssistantActive !== undefined) user.voiceAssistantActive = voiceAssistantActive;
+      if (Array.isArray(emergencyContacts)) {
+        user.emergencyContacts = emergencyContacts;
+        user.emergencyContactName = emergencyContacts[0]?.name || '';
+        user.emergencyContactPhone = emergencyContacts[0]?.phone || '';
+      }
 
       if (user.role === 'elderly' && caregiverEmail) {
         const caregiver = mockDb.users.find(u => u.email === caregiverEmail.toLowerCase() && u.role === 'caregiver');
@@ -311,6 +336,7 @@ exports.updatePreferences = async (req, res) => {
           caregiverId: user.caregiverId,
           emergencyContactName: user.emergencyContactName,
           emergencyContactPhone: user.emergencyContactPhone,
+          emergencyContacts: user.emergencyContacts || [],
           language: user.language,
           theme: user.theme,
           voiceAssistantActive: user.voiceAssistantActive
