@@ -12,9 +12,60 @@ const reportRoutes = require('./routes/medicalReports');
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const rateLimit = require('express-rate-limit');
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Turn off CSP if it blocks OCR client-side assets
+}));
+app.use(mongoSanitize());
+
+// CORS Configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
+      }
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
+// Body parser with 10mb limit for base64 uploads
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Rate limiters
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
+app.use('/api/', generalLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);

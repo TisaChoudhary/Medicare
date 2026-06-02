@@ -139,7 +139,7 @@ const App = () => {
       </header>
 
       {/* Main Page Area */}
-      <main className="container mx-auto px-4 py-6">
+      <main key={currentPage} className="container mx-auto px-4 py-6 animate-page-entry">
         {renderPage()}
       </main>
 

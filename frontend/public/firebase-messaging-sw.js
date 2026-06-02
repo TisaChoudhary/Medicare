@@ -65,6 +65,7 @@ self.addEventListener('notificationclick', function(event) {
   if (!action) return;
 
   const logId = notification.data ? notification.data.logId : null;
+  const actionToken = notification.data ? notification.data.actionToken : null;
   if (!logId) return;
 
   const API_URL = 'http://localhost:5000/api';
@@ -74,7 +75,7 @@ self.addEventListener('notificationclick', function(event) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ logId, action })
+      body: JSON.stringify({ logId, action, actionToken })
     })
     .then(res => res.json())
     .then(data => {

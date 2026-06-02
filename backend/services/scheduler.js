@@ -4,6 +4,7 @@ const ReminderLog = require('../models/ReminderLog');
 const User = require('../models/User');
 const Medicine = require('../models/Medicine');
 const CaregiverAlert = require('../models/CaregiverAlert');
+const jwt = require('jsonwebtoken');
 
 // Firebase Admin SDK integration (Optional/Credential check fallback)
 let firebaseMessaging = null;
@@ -75,11 +76,17 @@ const checkReminders = async () => {
         if (!log.userId || !log.medicineId) continue;
         
         const fcmToken = log.userId.fcmToken;
+        const actionToken = jwt.sign(
+          { logId: log._id.toString(), purpose: 'reminder_action' },
+          process.env.JWT_SECRET || 'medicare_default_secret',
+          { expiresIn: '1d' }
+        );
         const payload = {
           title: '💊 Medicine Reminder',
           body: `Time to take ${log.medicineId.name} - Dosage: ${log.medicineId.dosage} (${log.time})`,
           data: {
             logId: log._id.toString(),
+            actionToken,
             medicineName: log.medicineId.name,
             dosage: log.medicineId.dosage,
             time: log.time
@@ -109,11 +116,17 @@ const checkReminders = async () => {
           log.lastNotificationSentAt = new Date();
           
           const fcmToken = log.userId.fcmToken;
+          const actionToken = jwt.sign(
+            { logId: log._id.toString(), purpose: 'reminder_action' },
+            process.env.JWT_SECRET || 'medicare_default_secret',
+            { expiresIn: '1d' }
+          );
           const payload = {
             title: `⚠️ Medicine Alert (Attempt ${log.retryCount + 1})`,
             body: `Gentle reminder: Please take your ${log.medicineId.name} - Dosage: ${log.medicineId.dosage}.`,
             data: {
               logId: log._id.toString(),
+              actionToken,
               medicineName: log.medicineId.name,
               dosage: log.medicineId.dosage,
               time: log.time
@@ -159,11 +172,17 @@ const checkReminders = async () => {
         if (!patient || !medicine) continue;
 
         const fcmToken = patient.fcmToken;
+        const actionToken = jwt.sign(
+          { logId: log.id, purpose: 'reminder_action' },
+          process.env.JWT_SECRET || 'medicare_default_secret',
+          { expiresIn: '1d' }
+        );
         const payload = {
           title: '💊 Medicine Reminder',
           body: `Time to take ${medicine.name} - Dosage: ${medicine.dosage} (${log.time})`,
           data: {
             logId: log.id,
+            actionToken,
             medicineName: medicine.name,
             dosage: medicine.dosage,
             time: log.time
@@ -194,11 +213,17 @@ const checkReminders = async () => {
           log.lastNotificationSentAt = new Date();
 
           const fcmToken = patient.fcmToken;
+          const actionToken = jwt.sign(
+            { logId: log.id, purpose: 'reminder_action' },
+            process.env.JWT_SECRET || 'medicare_default_secret',
+            { expiresIn: '1d' }
+          );
           const payload = {
             title: `⚠️ Medicine Alert (Attempt ${log.retryCount + 1})`,
             body: `Gentle reminder: Please take your ${medicine.name} - Dosage: ${medicine.dosage}.`,
             data: {
               logId: log.id,
+              actionToken,
               medicineName: medicine.name,
               dosage: medicine.dosage,
               time: log.time

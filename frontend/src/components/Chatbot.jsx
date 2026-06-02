@@ -3,6 +3,33 @@ import { Send, AlertCircle } from 'lucide-react';
 import { aiAPI } from '../services/api';
 import { translations } from '../services/translations';
 
+const TypewriterText = ({ text, speed = 15, onCharTyped }) => {
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    let index = 0;
+    setDisplayedText('');
+    
+    const interval = setInterval(() => {
+      setDisplayedText((prev) => {
+        const next = prev + text.charAt(index);
+        index++;
+        if (index >= text.length) {
+          clearInterval(interval);
+        }
+        if (onCharTyped) {
+          onCharTyped();
+        }
+        return next;
+      });
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return <span>{displayedText}</span>;
+};
+
 const Chatbot = ({ lang = 'en' }) => {
   const [messages, setMessages] = useState([
     {
@@ -32,7 +59,7 @@ const Chatbot = ({ lang = 'en' }) => {
     setLoading(true);
 
     try {
-      const data = await aiAPI.chat(userText);
+      const data = await aiAPI.chat(userText, lang);
       setMessages(prev => [...prev, { sender: 'ai', text: data.answer }]);
     } catch (err) {
       console.error('Chatbot error:', err);
@@ -69,7 +96,13 @@ const Chatbot = ({ lang = 'en' }) => {
                   : 'bg-white dark:bg-[#1f1f1f] text-neutral-900 dark:text-white border-neutral-200 dark:border-neutral-800 font-semibold'
               }`}
             >
-              <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+              <p className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap">
+                {index === messages.length - 1 && msg.sender === 'ai' ? (
+                  <TypewriterText text={msg.text} onCharTyped={() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })} />
+                ) : (
+                  msg.text
+                )}
+              </p>
             </div>
           </div>
         ))}

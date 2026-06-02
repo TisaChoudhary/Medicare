@@ -10,6 +10,22 @@
   --font-size-elderly-xl: 1.75rem;  /* 28px */
   --font-size-elderly-2xl: 2.25rem; /* 36px */
   --font-size-elderly-3xl: 3rem;    /* 48px */
+  
+  /* Curated HSL Premium Color Tokens */
+  --color-brand-primary: hsl(142, 72%, 29%);       /* Premium Forest/Emerald Green */
+  --color-brand-primary-light: hsl(142, 69%, 40%);
+  --color-brand-primary-dark: hsl(142, 76%, 22%);
+  --color-accent-soft: hsl(210, 40%, 96.1%);       /* Soft blue-gray for backgrounds */
+  
+  /* Slate/Obsidian HSL Dark Colors */
+  --color-dark-bg: hsl(240, 10%, 3.9%);            /* Obsidian Black #09090b */
+  --color-dark-card: hsl(240, 10%, 10%);           /* Muted Dark Card #18181b */
+  --color-dark-border: hsl(240, 5%, 26%);          /* Dark Slate Border #3f3f46 */
+  
+  /* Alert HSLs */
+  --color-alert-danger: hsl(346.8, 77.2%, 49.8%);
+  --color-alert-warning: hsl(24.6, 95%, 53.1%);
+  --color-alert-info: hsl(199, 89%, 48%);
 }
 
 /* --- BASE STYLES --- */
@@ -19,19 +35,74 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   font-family: var(--font-family-elderly);
+  background-color: var(--color-accent-soft);
+  color: hsl(240, 10%, 3.9%);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* --- COMMON TACTILE HELPERS --- */
-.btn-elderly {
-  @apply cursor-pointer select-none transition-all duration-150 active:scale-95;
+.dark body {
+  background-color: var(--color-dark-bg);
+  color: hsl(0, 0%, 98%);
 }
 
-/* Focus outline settings for accessibility */
+/* --- FOCUS OUTLINE ACCESSIBILITY --- */
 *:focus-visible {
-  @apply outline-none ring-4 ring-neutral-400 dark:ring-neutral-200 ring-offset-2 dark:ring-offset-neutral-900;
+  outline: none;
+  ring: 4px solid var(--color-brand-primary-light);
+  ring-offset: 3px;
 }
 
-/* --- SOS EMERGENCIES ANIMATION --- */
+.dark *:focus-visible {
+  ring: 4px solid hsl(142, 70%, 50%);
+  ring-offset: 3px;
+  ring-offset-color: var(--color-dark-bg);
+}
+
+/* --- CUSTOM PREMIUM SCROLLBARS --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(240, 5.9%, 70%);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(240, 5%, 35%);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(240, 5.9%, 55%);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(240, 5%, 45%);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+/* --- BUTTON & CARD HOVERS AND SCALE EFFECTS --- */
+.btn-elderly {
+  @apply cursor-pointer select-none transition-all duration-200 active:scale-95 hover:brightness-105 active:brightness-95;
+}
+
+.card-premium {
+  @apply bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300;
+}
+
+/* --- MICRO-ANIMATIONS & TRANSITIONS --- */
 @keyframes urgent-pulse {
   0%, 100% {
     transform: scale(1);
@@ -45,4 +116,44 @@ body {
 
 .sos-pulse-animation {
   animation: urgent-pulse 2s infinite ease-in-out;
+}
+
+/* Notification & Attention Pulse Glow */
+@keyframes attention-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(22, 163, 74, 0);
+  }
+}
+
+.pulse-glow-emerald {
+  animation: attention-pulse 2.5s infinite ease-in-out;
+}
+
+/* Page Entry Animations */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-entry {
+  animation: page-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* List Items Sequential Fade-in delay rules */
+.animate-item-fade {
+  animation: page-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  @apply bg-white/80 dark:bg-black/60 backdrop-blur-xl border border-white/20 dark:border-neutral-900;
 }

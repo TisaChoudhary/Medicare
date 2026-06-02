@@ -152,8 +152,8 @@ export const aiAPI = {
     const res = await api.get('/ai/analysis');
     return res.data;
   },
-  chat: async (question) => {
-    const res = await api.post('/ai/chat', { question });
+  chat: async (question, lang) => {
+    const res = await api.post('/ai/chat', { question, lang });
     return res.data;
   },
 };

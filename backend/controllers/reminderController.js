@@ -3,6 +3,7 @@ const Medicine = require('../models/Medicine');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const mockDb = require('../models/mockDb');
+const jwt = require('jsonwebtoken');
 
 // Mock helper to generate logs
 const generateDailyLogsMock = (userId, dateStr) => {
@@ -451,12 +452,51 @@ exports.getNotifications = async (req, res) => {
 
 exports.postReminderAction = async (req, res) => {
   try {
-    const { logId, action } = req.body;
-    if (!['taken', 'soze', 'snooze'].includes(action)) {
+    const { logId, action, actionToken } = req.body;
+    if (!['taken', 'snooze'].includes(action)) {
       return res.status(400).json({ success: false, message: 'Invalid action' });
     }
 
     const isDbConnected = mongoose.connection.readyState === 1;
+    let userId = null;
+    let authorized = false;
+
+    // 1. Verify via signed single-use actionToken (from background click events)
+    if (actionToken) {
+      try {
+        const decodedAction = jwt.verify(actionToken, process.env.JWT_SECRET || 'medicare_default_secret');
+        if (decodedAction.logId === logId && decodedAction.purpose === 'reminder_action') {
+          authorized = true;
+        }
+      } catch (err) {
+        console.warn('Action token validation failed:', err.message);
+      }
+    }
+
+    // 2. Or verify via standard Bearer token (from active app dashboard clicks)
+    if (!authorized) {
+      let token;
+      if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        try {
+          token = req.headers.authorization.split(' ')[1];
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'medicare_default_secret');
+          
+          if (isDbConnected) {
+            const user = await User.findById(decoded.id);
+            if (user) {
+              userId = user._id.toString();
+            }
+          } else {
+            const user = mockDb.users.find(u => u.id === decoded.id);
+            if (user) {
+              userId = user.id;
+            }
+          }
+        } catch (err) {
+          console.warn('Bearer auth verification failed in reminder action:', err.message);
+        }
+      }
+    }
 
     if (isDbConnected) {
       const log = await ReminderLog.findById(logId).populate('medicineId');
@@ -464,12 +504,19 @@ exports.postReminderAction = async (req, res) => {
         return res.status(404).json({ success: false, message: 'Reminder log not found' });
       }
 
+      // Check ownership if not authorized via Action Token
+      if (!authorized) {
+        if (!userId || log.userId.toString() !== userId) {
+          return res.status(403).json({ success: false, message: 'Access denied: You do not own this reminder log' });
+        }
+      }
+
+      const oldStatus = log.status;
+      log.status = action === 'snooze' ? 'snoozed' : 'taken';
+      log.updatedAt = new Date();
+
       if (action === 'taken') {
-        const oldStatus = log.status;
-        log.status = 'taken';
         log.takenAt = new Date();
-        log.updatedAt = new Date();
-        
         // Decrement medicine stock if it wasn't already taken
         if (oldStatus !== 'taken' && log.medicineId) {
           const medicine = await Medicine.findById(log.medicineId._id);
@@ -478,12 +525,8 @@ exports.postReminderAction = async (req, res) => {
             await medicine.save();
           }
         }
-        await log.save();
       } else if (action === 'snooze') {
-        log.status = 'snoozed';
         log.snoozeCount = (log.snoozeCount || 0) + 1;
-        log.updatedAt = new Date();
-        await log.save();
 
         // Schedule new reminder in 10 minutes
         const snoozeTime = new Date(Date.now() + 10 * 60 * 1000);
@@ -505,12 +548,20 @@ exports.postReminderAction = async (req, res) => {
         await newLog.save();
       }
 
+      await log.save();
       return res.json({ success: true, reminder: log });
     } else {
       // --- Mock-DB Mode ---
       const log = mockDb.reminderLogs.find(l => l.id === logId);
       if (!log) {
         return res.status(404).json({ success: false, message: 'Reminder log not found (Mock-DB)' });
+      }
+
+      // Check ownership if not authorized via Action Token
+      if (!authorized) {
+        if (!userId || log.userId !== userId) {
+          return res.status(403).json({ success: false, message: 'Access denied: You do not own this reminder (Mock-DB)' });
+        }
       }
 
       const medicine = mockDb.medicines.find(m => m.id === log.medicineId);
@@ -569,6 +620,21 @@ exports.postReminderAction = async (req, res) => {
 
 exports.triggerSchedulerCheck = async (req, res) => {
   try {
+    const isCron = req.headers['x-vercel-cron'] === '1';
+    const isLocal = process.env.NODE_ENV !== 'production';
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.headers.authorization;
+
+    let authorized = isLocal || isCron;
+
+    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+      authorized = true;
+    }
+
+    if (!authorized) {
+      return res.status(401).json({ success: false, message: 'Unauthorized scheduler trigger' });
+    }
+
     const { checkReminders } = require('../services/scheduler');
     await checkReminders();
     res.json({ success: true, message: 'Background reminder checks executed successfully.' });

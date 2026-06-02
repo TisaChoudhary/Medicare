@@ -219,10 +219,12 @@ exports.getHabitAnalysis = async (req, res) => {
 
 exports.askChatbot = async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, lang } = req.body;
     if (!question) {
       return res.status(400).json({ success: false, message: 'Question is required' });
     }
+
+    const targetLanguage = lang === 'hi' ? 'Hindi' : lang === 'es' ? 'Spanish' : 'English';
 
     const systemPrompt = `
       You are "MediCare AI", a friendly, empathetic virtual medical assistant for elderly patients. 
@@ -230,6 +232,7 @@ exports.askChatbot = async (req, res) => {
       - Use simple words and short sentences.
       - DO NOT prescribe new drugs, change dosages, or offer definitive medical diagnoses.
       - Always advise consulting their doctor or caregiver for serious issues.
+      - IMPORTANT: You MUST write your response in ${targetLanguage}.
     `;
 
     if (openai) {
