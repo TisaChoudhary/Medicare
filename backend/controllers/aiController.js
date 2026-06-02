@@ -224,12 +224,63 @@ exports.askChatbot = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Question is required' });
     }
 
+    const isDbConnected = mongoose.connection.readyState === 1;
     const targetLanguage = lang === 'hi' ? 'Hindi' : lang === 'es' ? 'Spanish' : 'English';
+    const userId = req.user.id;
+
+    // Fetch context data for the user
+    let activeMeds = [];
+    let lowStockMeds = [];
+    let complianceStats = null;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (isDbConnected) {
+      activeMeds = await Medicine.find({ userId, active: true });
+      lowStockMeds = activeMeds.filter(m => m.stock <= m.stockAlertThreshold);
+      const todayLogs = await ReminderLog.find({ userId, date: todayStr });
+      complianceStats = {
+        total: todayLogs.length,
+        taken: todayLogs.filter(l => l.status === 'taken').length
+      };
+    } else {
+      activeMeds = mockDb.medicines.filter(m => m.userId === userId && m.active === true);
+      lowStockMeds = activeMeds.filter(m => m.stock <= m.stockAlertThreshold);
+      const todayLogs = mockDb.reminderLogs.filter(l => l.userId === userId && l.date === todayStr);
+      complianceStats = {
+        total: todayLogs.length,
+        taken: todayLogs.filter(l => l.status === 'taken').length
+      };
+    }
+
+    const medsContext = activeMeds.map(m => 
+      `- ${m.name}: Dosage: ${m.dosage || '1 dose'}, Freq: ${m.frequency || 'once_daily'}, Timings: ${m.timings.join(', ')}, Meal relation: ${m.beforeAfterFood || 'anytime'}, Stock left: ${m.stock} (Threshold: ${m.stockAlertThreshold})`
+    ).join('\n') || 'None';
+
+    const lowStockContext = lowStockMeds.map(m => `- ${m.name} (Only ${m.stock} doses remaining!)`).join('\n') || 'None';
+
+    const complianceContext = complianceStats && complianceStats.total > 0
+      ? `Today the patient has taken ${complianceStats.taken} out of ${complianceStats.total} scheduled medication reminders.`
+      : 'No medication doses scheduled or logged for today yet.';
 
     const systemPrompt = `
       You are "MediCare AI", a friendly, empathetic virtual medical assistant for elderly patients. 
-      - Answer their question in a simple, clear, reassuring manner.
-      - Use simple words and short sentences.
+      You are speaking directly with ${req.user.name}.
+      
+      Patient Profile:
+      - Emergency Contact: ${req.user.emergencyContactName || 'Not Set'} (Phone: ${req.user.emergencyContactPhone || 'Not Set'})
+      
+      Active Medication Regimen:
+      ${medsContext}
+      
+      Low Stock Alerts:
+      ${lowStockContext}
+      
+      Today's Compliance Status:
+      ${complianceContext}
+
+      Guidelines:
+      - Answer their question in a simple, clear, reassuring manner. Use simple words and short sentences.
+      - Use the provided patient profile context to answer questions about their medication schedules, stock counts, and compliance when relevant.
       - DO NOT prescribe new drugs, change dosages, or offer definitive medical diagnoses.
       - Always advise consulting their doctor or caregiver for serious issues.
       - IMPORTANT: You MUST write your response in ${targetLanguage}.
